@@ -1,0 +1,11 @@
+*.d
+*.lst
+*.su
+*.o
+build/ch.bin
+*.dmp
+build/ch.elf
+*.hex
+build/ch.list
+*.map
+build/ch.dfu

@@ -33,7 +33,7 @@
 #include <math.h>
 
 #define START_MIN 10000
-#define STOP_MAX 1500000000
+#define STOP_MAX 2100000000
 
 static void apply_error_term_at(int i);
 static void apply_edelay_at(int i);
@@ -727,10 +727,7 @@ static bool sweep(bool break_on_operation)
 }
 
 #ifdef __SCANRAW_CMD__
-static void measure_gamma_avg(uint8_t channel, uint32_t freq, uint16_t avg_count, float* gamma) {
-    int delay = set_frequency(freq);
-    delay = delay < 3 ? 3 : delay;
-    delay = delay > 8 ? 8 : delay;
+static void measure_gamma_avg(uint8_t channel, uint16_t avg_count, float* gamma,int delay) {
     
     tlv320aic3204_select(channel);
     wait_dsp(delay);
@@ -758,7 +755,7 @@ static void cmd_scanraw(BaseSequentialStream *chp, int argc, char *argv[])
 {
     int32_t chan, freq, step, count, avg_count;
     if (argc != 4 && argc != 5) {
-        chprintf(chp, "usage: scanraw {channel(0|1)} {start(Hz)} {stEp(Hz)} {count} [average]\r\n");
+        chprintf(chp, "usage: scanraw {channel(0|1|2)} {start(Hz)} {stEp(Hz)} {count} [average]\r\n");
         return;
     }
     chan = atoi(argv[0]);
@@ -768,7 +765,7 @@ static void cmd_scanraw(BaseSequentialStream *chp, int argc, char *argv[])
     avg_count = 1;
     if (argc == 5)
         avg_count = atoi(argv[4]);
-    if (chan < 0 || chan > 1) {
+    if (chan < 0 || chan > 2) {
         chprintf(chp, "error: invalid channel\r\n");
         return;
     }
@@ -788,8 +785,17 @@ static void cmd_scanraw(BaseSequentialStream *chp, int argc, char *argv[])
     chThdSleepMilliseconds(10);
 
     for (int i = 0; i < count; i++, freq += step) {
-        float gamma[2];
-        measure_gamma_avg(chan, freq, avg_count, gamma);
+      float gamma[4];
+        int delay = set_frequency(freq);
+        delay = delay < 3 ? 3 : delay;
+        delay = delay > 8 ? 8 : delay;
+
+        if (chan == 2) {
+          measure_gamma_avg(0, avg_count, gamma, delay);
+          measure_gamma_avg(1, avg_count, &gamma[2], delay);
+          chprintf(chp, "%d\t%f\t%f\t%f\t%f\r\n", freq, gamma[0], gamma[1],gamma[2],gamma[3]);
+        } else {
+          measure_gamma_avg(chan, avg_count, gamma, delay);
 
 #ifndef __USE_STDIO__
         // WARNING: chprintf doesn't support proper float formatting
@@ -810,6 +816,7 @@ static void cmd_scanraw(BaseSequentialStream *chp, int argc, char *argv[])
         streamPut(chp, (uint8_t)'\r'); 
         streamPut(chp, (uint8_t)'\n'); 
 #endif // __USE_STDIO__
+        }
     }
     chMtxUnlock(&mutex_sweep);
 }

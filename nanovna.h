@@ -23,7 +23,7 @@
 
 
 //#define __DUMP_CMD__
-//#define __SCANRAW_CMD__
+#define __SCANRAW_CMD__
 //#define __COLOR_CMD__
 //#define __USE_STDIO__
 //#define __DAC__
