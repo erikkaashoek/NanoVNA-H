@@ -2139,6 +2139,41 @@ static void cmd_color(BaseSequentialStream *chp, int argc, char *argv[])
 #endif
 
 
+#define byte uint8_t
+extern int SI4432_Sel;         // currently selected SI4432
+void SI4432_Write_Byte(byte ADR, byte DATA );
+byte SI4432_Read_Byte( byte ADR );
+
+static void cmd_v(BaseSequentialStream *chp, int argc, char *argv[])
+{
+    if (argc != 1) {
+        chprintf(chp, "%d\r\n", SI4432_Sel);
+        return;
+    }
+    SI4432_Sel = atoi(argv[0]);
+}
+
+static void cmd_x(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  int rvalue;
+  int lvalue = 0;
+  if (argc != 1 && argc != 2) {
+    chprintf(chp, "usage: x {addr(0-95)} [value(0-255)]\r\n");
+    return;
+  }
+  rvalue = atoi(argv[0]);
+ // chMtxLock(&mutex_ili9341);
+  if (argc == 2){
+    lvalue = atoi(argv[1]);
+    SI4432_Write_Byte(rvalue, lvalue);
+ //   chMtxUnlock(&mutex_ili9341); // [/protect spi_buffer]
+  } else {
+    lvalue = SI4432_Read_Byte(rvalue);
+ //   chMtxUnlock(&mutex_ili9341); // [/protect spi_buffer]
+    chprintf(chp, "%d\r\n", lvalue);
+  }
+}
+
 static void cmd_vbat_offset(BaseSequentialStream *chp, int argc, char *argv[])
 {
     if (argc != 1) {
@@ -2196,6 +2231,8 @@ static const ShellCommand commands[] =
     { "color", cmd_color },
 #endif
    { "vbat_offset", cmd_vbat_offset },
+    { "v", cmd_v },
+    { "x", cmd_x },
     { NULL, NULL }
 };
 

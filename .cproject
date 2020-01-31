@@ -93,7 +93,7 @@
 							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.debugging.other.1741259904" name="Other debugging flags" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.debugging.other"/>
 							<option id="ilg.gnuarmeclipse.managedbuild.cross.option.showDevicesTab.735093915" name="showDevicesTab" superClass="ilg.gnuarmeclipse.managedbuild.cross.option.showDevicesTab"/>
 							<targetPlatform archList="all" binaryParser="org.eclipse.cdt.core.ELF" id="ilg.gnuarmeclipse.managedbuild.cross.targetPlatform.1003993017" isAbstract="false" osList="all"/>
-							<builder id="ilg.gnuarmeclipse.managedbuild.cross.builder.2120933485" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="Gnu Make Builder" parallelBuildOn="true"/>
+							<builder buildPath="${workspace_loc:/NanoVNA_AA6KL}" id="ilg.gnuarmeclipse.managedbuild.cross.builder.2120933485" keepEnvironmentInBuildfile="false" managedBuildOn="false" name="Gnu Make Builder" parallelBuildOn="true"/>
 						</toolChain>
 					</folderInfo>
 				</configuration>
