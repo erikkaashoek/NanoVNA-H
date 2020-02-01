@@ -66,6 +66,7 @@ bool pll_lock_failed;
 static THD_WORKING_AREA(waThread1, 640);
 static THD_FUNCTION(Thread1, arg)
 {
+  int i=0; // debug
     chRegSetThreadName("sweep");
 
     while (1) {
@@ -75,7 +76,7 @@ static THD_FUNCTION(Thread1, arg)
             chMtxLock(&mutex_sweep);
             palClearPad(GPIOC, GPIOC_LED);  // disable led and wait for voltage stabilization
             chThdSleepMilliseconds(5);
-        
+
             completed = sweep(true);
             sweep_once = FALSE;
 
@@ -2273,6 +2274,7 @@ int main(void)
       * SPI LCD Initialize
       */
      ili9341_init();
+     SI4432_Init();
      show_logo();
      /* restore config */
        config_recall();
@@ -2342,7 +2344,7 @@ int main(void)
    */
     shellInit();
 
-
+//    SI4432_Init();
     // redraw_frame();
      draw_frequencies();
      draw_cal_status();

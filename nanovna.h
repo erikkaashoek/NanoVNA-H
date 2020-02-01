@@ -496,3 +496,5 @@ static inline uint8_t vbat2bati(int16_t vbat)
 extern int SI4432_Sel;         // currently selected SI4432
 void SI4432_Write_Byte(byte ADR, byte DATA );
 byte SI4432_Read_Byte( byte ADR );
+
+void SI4432_Init(void);
