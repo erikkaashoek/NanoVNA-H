@@ -498,3 +498,7 @@ void SI4432_Write_Byte(byte ADR, byte DATA );
 byte SI4432_Read_Byte( byte ADR );
 
 void SI4432_Init(void);
+float SI4432_RSSI(void);
+void SI4432_Set_Frequency ( long Freq );
+float SI4432_SET_RBW(float WISH);
+

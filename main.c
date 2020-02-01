@@ -698,12 +698,22 @@ static void ensure_edit_config(void)
   cal_status = 0;
 }
 
+#define IFREQ   433900000
+
 // main loop for measurement
 static bool sweep(bool break_on_operation)
 {
     pll_lock_failed = false;
+    SI4432_Sel = 0;
+    SI4432_Set_Frequency (IFREQ);
+    float ownrbw = ((float)(frequencies[1] - frequencies[0]))/1000.0;
+    SI4432_SET_RBW(ownrbw);
+    SI4432_Sel = 1;
+    SI4432_Write_Byte(0x6D, 0x1F);//Set full power
+
     for (int i = 0; i < sweep_points; i++) {
-        int delay = set_frequency(frequencies[i]);
+#if 0
+      int delay = set_frequency(frequencies[i]);
         delay = delay < 3 ? 3 : delay;
         delay = delay > 8 ? 8 : delay;
     
@@ -724,7 +734,17 @@ static bool sweep(bool break_on_operation)
 
     if (electrical_delay != 0)
       apply_edelay_at(i);
-
+#else
+    SI4432_Sel=1;
+    SI4432_Set_Frequency(IFREQ + frequencies[i] );
+    SI4432_Sel=0;
+    float t = SI4432_RSSI()+30.0;
+    t = pow(10, t/20.0);
+    measured[0][i][0] = t;
+    measured[0][i][1] = 0.0;
+    measured[1][i][0] = 0.0;
+    measured[1][i][1] = 0.0;
+#endif
     // back to toplevel to handle ui operation
     if (operation_requested && break_on_operation)
       return false;

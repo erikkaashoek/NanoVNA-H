@@ -491,7 +491,7 @@ void SI4432_Set_Frequency ( long Freq ) {
   chThdSleepMilliseconds(2);
 }
 
-int SI4432_RSSI()
+float SI4432_RSSI()
 {
   int RSSI_RAW;
   // SEE DATASHEET PAGE 61
@@ -501,9 +501,9 @@ int SI4432_RSSI()
   } else
 #endif
     RSSI_RAW = (unsigned char)SI4432_Read_Byte( 0x26 ) ;
-//  float dBm = 0.5 * RSSI_RAW - 120.0 ;
+  float dBm = 0.5 * RSSI_RAW - 120.0 ;
   // Serial.println(dBm,2);
-  return RSSI_RAW ;
+  return dBm ;
 }
 
 
