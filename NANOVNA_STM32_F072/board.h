@@ -59,6 +59,7 @@
 #define GPIOA_XP				6
 #define GPIOA_YP				7
 #define GPIOA_MCO				8
+#define GPIOA_SPI2_SDO          9
 #define GPIOA_USB_DISC			10
 #define GPIOA_USB_DM            11
 #define GPIOA_USB_DP            12
@@ -80,9 +81,12 @@
 #define GPIOB_SD_CS				11
 #define GPIOB_I2S2_WCLK         12
 #define GPIOB_I2S2_BCLK         13
+#define GPIOB_I2S2_MISO         14
 #define GPIOB_I2S2_MOSI         15
 
 #define GPIOC_LED               13
+#define GPIOC_SPI2_CLK          14
+#define GPIOC_SPI2_SDI          15
 
 #define GPIOF_OSC_IN            0
 #define GPIOF_OSC_OUT           1
@@ -128,7 +132,7 @@
                                      PIN_MODE_ANALOG(GPIOA_XP) |    \
                                      PIN_MODE_ANALOG(GPIOA_YP) |    \
                                      PIN_MODE_ALTERNATE(GPIOA_MCO) | \
-                                     PIN_MODE_INPUT(9U) |           \
+                                     PIN_MODE_INPUT(GPIOA_SPI2_SDO) |           \
                                      PIN_MODE_OUTPUT(GPIOA_USB_DISC) | \
                                      PIN_MODE_INPUT(GPIOA_USB_DM) |  \
                                      PIN_MODE_INPUT(GPIOA_USB_DP) |  \
@@ -144,7 +148,7 @@
                                      PIN_OTYPE_PUSHPULL(6U) |       \
                                      PIN_OTYPE_PUSHPULL(7U) |       \
                                      PIN_OTYPE_PUSHPULL(GPIOA_MCO) |       \
-                                     PIN_OTYPE_PUSHPULL(9U) |       \
+                                     PIN_OTYPE_PUSHPULL(GPIOA_SPI2_SDO) |       \
                                      PIN_OTYPE_PUSHPULL(GPIOA_USB_DISC) | \
                                      PIN_OTYPE_PUSHPULL(GPIOA_USB_DM) |  \
                                      PIN_OTYPE_PUSHPULL(GPIOA_USB_DP) |  \
@@ -160,7 +164,7 @@
                                      PIN_OSPEED_2M(6) |          \
                                      PIN_OSPEED_2M(7) |          \
                                      PIN_OSPEED_100M(GPIOA_MCO) | \
-                                     PIN_OSPEED_100M(9) |          \
+                                     PIN_OSPEED_100M(GPIOA_SPI2_SDO) |          \
                                      PIN_OSPEED_100M(10) |         \
                                      PIN_OSPEED_100M(GPIOA_USB_DM) |     \
                                      PIN_OSPEED_100M(GPIOA_USB_DP) |     \
@@ -176,7 +180,7 @@
                                      PIN_PUPDR_FLOATING(6) |         \
                                      PIN_PUPDR_FLOATING(7) |         \
                                      PIN_PUPDR_PULLUP(GPIOA_MCO) | \
-                                     PIN_PUPDR_PULLUP(9) |         \
+                                     PIN_PUPDR_PULLUP(GPIOA_SPI2_SDO) |         \
                                      PIN_PUPDR_PULLUP(GPIOA_USB_DISC) | \
                                      PIN_PUPDR_FLOATING(GPIOA_USB_DM) | \
                                      PIN_PUPDR_FLOATING(GPIOA_USB_DP) | \
@@ -192,7 +196,7 @@
                                      PIN_ODR_HIGH(6) |             \
                                      PIN_ODR_HIGH(7) |             \
                                      PIN_ODR_HIGH(GPIOA_MCO) |     \
-                                     PIN_ODR_HIGH(9) |             \
+                                     PIN_ODR_HIGH(GPIOA_SPI2_SDO) |             \
                                      PIN_ODR_HIGH(GPIOA_USB_DISC) | \
                                      PIN_ODR_HIGH(GPIOA_USB_DM) |   \
                                      PIN_ODR_HIGH(GPIOA_USB_DP) |   \
@@ -208,7 +212,7 @@
                                      PIN_AFIO_AF(6, 0) |           \
                                      PIN_AFIO_AF(7, 0))
 #define VAL_GPIOA_AFRH              (PIN_AFIO_AF(GPIOA_MCO, 0) |           \
-                                     PIN_AFIO_AF(9, 0) |           \
+                                     PIN_AFIO_AF(GPIOA_SPI2_SDO, 0) |           \
                                      PIN_AFIO_AF(GPIOA_USB_DISC, 0) |          \
                                      PIN_AFIO_AF(GPIOA_USB_DM, 0) |     \
                                      PIN_AFIO_AF(GPIOA_USB_DP, 0) |     \
@@ -346,8 +350,8 @@
                                      PIN_MODE_INPUT(11) |          \
                                      PIN_MODE_INPUT(12) |          \
                                      PIN_MODE_OUTPUT(GPIOC_LED) | \
-                                     PIN_MODE_INPUT(14) | \
-                                     PIN_MODE_INPUT(15))
+                                     PIN_MODE_OUTPUT(GPIOC_SPI2_CLK) | \
+                                     PIN_MODE_OUTPUT(GPIOC_SPI2_SDI))
 #define VAL_GPIOC_OTYPER            (PIN_OTYPE_PUSHPULL(0) |       \
                                      PIN_OTYPE_PUSHPULL(1) |       \
                                      PIN_OTYPE_PUSHPULL(2) |       \
@@ -362,8 +366,8 @@
                                      PIN_OTYPE_PUSHPULL(11) |      \
                                      PIN_OTYPE_PUSHPULL(12) |      \
                                      PIN_OTYPE_PUSHPULL(GPIOC_LED) | \
-                                     PIN_OTYPE_PUSHPULL(14) | \
-                                     PIN_OTYPE_PUSHPULL(15))
+                                     PIN_OTYPE_PUSHPULL(GPIOC_SPI2_CLK) | \
+                                     PIN_OTYPE_PUSHPULL(GPIOC_SPI2_SDI))
 #define VAL_GPIOC_OSPEEDR           (PIN_OSPEED_100M(0) |          \
                                      PIN_OSPEED_100M(1) |          \
                                      PIN_OSPEED_100M(2) |          \
@@ -378,8 +382,8 @@
                                      PIN_OSPEED_100M(11) |         \
                                      PIN_OSPEED_100M(12) |         \
                                      PIN_OSPEED_100M(GPIOC_LED) | \
-                                     PIN_OSPEED_100M(14) | \
-                                     PIN_OSPEED_100M(15))
+                                     PIN_OSPEED_100M(GPIOC_SPI2_CLK) | \
+                                     PIN_OSPEED_100M(GPIOC_SPI2_SDI))
 #define VAL_GPIOC_PUPDR             (PIN_PUPDR_PULLUP(0) |         \
                                      PIN_PUPDR_PULLUP(1) |         \
                                      PIN_PUPDR_PULLUP(2) |         \
@@ -394,8 +398,8 @@
                                      PIN_PUPDR_PULLUP(11) |        \
                                      PIN_PUPDR_PULLUP(12) |        \
                                      PIN_PUPDR_FLOATING(GPIOC_LED) | \
-                                     PIN_PUPDR_FLOATING(14) |        \
-                                     PIN_PUPDR_PULLUP(15))
+                                     PIN_PUPDR_FLOATING(GPIOC_SPI2_CLK) |        \
+                                     PIN_PUPDR_FLOATING(GPIOC_SPI2_SDI))
 #define VAL_GPIOC_ODR               (PIN_ODR_HIGH(0) |             \
                                      PIN_ODR_HIGH(1) |             \
                                      PIN_ODR_HIGH(2) |             \
@@ -410,8 +414,8 @@
                                      PIN_ODR_HIGH(11) |            \
                                      PIN_ODR_HIGH(12) |            \
                                      PIN_ODR_HIGH(GPIOC_LED) | \
-                                     PIN_ODR_HIGH(14) | \
-                                     PIN_ODR_HIGH(15))
+                                     PIN_ODR_HIGH(GPIOC_SPI2_CLK) | \
+                                     PIN_ODR_HIGH(GPIOC_SPI2_SDI))
 #define VAL_GPIOC_AFRL              (PIN_AFIO_AF(0, 0) |           \
                                      PIN_AFIO_AF(1, 0) |           \
                                      PIN_AFIO_AF(2, 0) |           \
@@ -426,8 +430,8 @@
                                      PIN_AFIO_AF(11, 0) |          \
                                      PIN_AFIO_AF(12, 0) |          \
                                      PIN_AFIO_AF(GPIOC_LED, 0) | \
-                                     PIN_AFIO_AF(14, 0) | \
-                                     PIN_AFIO_AF(15, 0))
+                                     PIN_AFIO_AF(GPIOC_SPI2_CLK, 0) | \
+                                     PIN_AFIO_AF(GPIOC_SPI2_SDI, 0))
 
 /*
  * GPIOD setup:

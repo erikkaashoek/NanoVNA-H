@@ -371,7 +371,7 @@ typedef struct {
   uint16_t _cal_status;
 
   uint32_t _frequencies[POINT_COUNT];
-  float _cal_data[5][POINT_COUNT][2];
+  float _cal_data[1][POINT_COUNT][2];
   float _electrical_delay; // picoseconds
   
   trace_t _trace[TRACE_COUNT];

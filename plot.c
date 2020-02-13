@@ -1553,7 +1553,7 @@ static void cell_draw_marker_info(int m, int n, int w, int h)
 
   // draw marker frequency
   int xpos = 192;
-  ypos = 1 + (j/2)*FONT_HEIGHT;
+  int ypos = 1 + (j/2)*FONT_HEIGHT;
   xpos -= m * CELLWIDTH -CELLOFFSETX;
   ypos -= n * CELLHEIGHT;
   chsnprintf(buf, sizeof buf, "%d:", active_marker + 1);

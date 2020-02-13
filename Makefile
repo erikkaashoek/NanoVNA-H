@@ -5,9 +5,9 @@
 
 #Build target
 #ifeq ($(TARGET),)
-#  TARGET = F072
+TARGET = F072
 #endif
-TARGET=F303
+#TARGET=F303
 
 # Compiler options here.
 ifeq ($(USE_OPT),)

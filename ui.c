@@ -686,8 +686,8 @@ show_logo(void)
   ili9341_drawstring_size(BOARD_NAME, x+60, y, RGBHEX(0x0000FF), 0x0000, 4);
   y += 25;
 
-  ili9341_drawstring_size("NANOVNA.COM", x+100, y += 10, 0xffff, 0x0000, 2);
-  ili9341_drawstring_5x7("https://github.com/hugen79/NanoVNA-H", x, y += 20, 0xffff, 0x0000);
+  ili9341_drawstring_size("TINYSA.ORG", x+100, y += 10, 0xffff, 0x0000, 2);
+  ili9341_drawstring_5x7("https://github.com/erikkaashoek/tinysa", x, y += 20, 0xffff, 0x0000);
   ili9341_drawstring_5x7("Based on edy555 design", x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_5x7("2016-2020 Copyright @edy555", x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_5x7("Licensed under GPL. See: https://github.com/ttrftech/NanoVNA", x, y += 10, 0xffff, 0x0000);
