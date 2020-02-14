@@ -28,19 +28,39 @@
 //#define __USE_STDIO__
 //#define __DAC__
 //#define __CMD_TIME__
+//#define __VNA__
+#define __SA__
 /*
  * main.c
  */
+#ifdef __VNA__
 #define POINT_COUNT     101
+#endif
+#ifdef __SA__
+#define POINT_COUNT     300
+#endif
 #define MARKER_COUNT    4
 //#if !defined(ANTENNA_ANALYZER)
+#ifdef __VNA__
 #define TRACE_COUNT     4
+#endif
+#ifdef __SA__
+#define TRACE_COUNT     3
+#endif
 //#else
 //#define TRACE_COUNT     2
 //#endif
      
+#ifdef __VNA__
 extern float measured[2][POINT_COUNT][2];
+#endif
+#ifdef __SA__
+extern float measured[3][POINT_COUNT];
+#endif
 
+extern const char * const trc_channel_name[];
+
+#ifdef __VNA__
 #define CAL_LOAD 0
 #define CAL_OPEN 1
 #define CAL_SHORT 2
@@ -82,6 +102,7 @@ extern float measured[2][POINT_COUNT][2];
 
 void cal_collect(int type);
 void cal_done(void);
+#endif
 
 enum {
   ST_START, ST_STOP, ST_CENTER, ST_SPAN, ST_CW
@@ -103,6 +124,7 @@ extern void ui_process(void);
 enum { OP_NONE = 0, OP_LEVER, OP_TOUCH, OP_FREQCHANGE };
 extern uint8_t operation_requested;
 
+#ifdef __VNA__
 /*
  * dsp.c
  */
@@ -123,8 +145,9 @@ void reset_dsp_accumerator(void);
 void calculate_gamma(float *gamma);
 void fetch_amplitude(float *gamma);
 void fetch_amplitude_ref(float *gamma);
+#endif
 
-
+#ifdef __VNA__
 /*
  * tlv320aic3204.c
  */
@@ -133,6 +156,7 @@ extern void tlv320aic3204_init(void);
 extern void tlv320aic3204_set_gain(int lgain, int rgain);
 extern void tlv320aic3204_select(int channel);
 
+#endif
 
 /*
  * plot.c
@@ -208,8 +232,10 @@ typedef struct {
     uint16_t menu_active_color;
     uint16_t trace_color[TRACE_COUNT];
     int16_t touch_cal[4];
+#ifdef __VNA__
     int8_t default_loadcal;
     uint32_t harmonic_freq_threshold;
+#endif
     int16_t vbat_offset;
     int32_t checksum;
 } config_t;
@@ -228,8 +254,11 @@ const char *get_trace_typename(int t);
 void draw_battery_status(void);
 void draw_pll_lock_error(void);
 
+#ifdef __VNA__
 void set_electrical_delay(float picoseconds);
 float get_electrical_delay(void);
+#endif
+
 
 // marker
 
@@ -256,7 +285,9 @@ void force_set_markmap(void);
 void draw_frequencies(void);
 void draw_all(bool flush);
 
+#ifdef __VNA__
 void draw_cal_status(void);
+#endif
 
 void marker_position(int m, int t, int *x, int *y);
 int search_nearest_index(int x, int y, int t);
@@ -269,8 +300,9 @@ extern uint16_t redraw_request;
 #define REDRAW_MARKER     (1<<3)
 
 extern int16_t vbat;
+#ifdef __VNA__
 extern bool pll_lock_failed;
-
+#endif
 
 /*
  * ili9341.c
@@ -327,17 +359,22 @@ typedef struct {
   int32_t _frequency0; // start or center
   int32_t _frequency1; // stop or span
   int16_t _sweep_points;
+#ifdef __VNA__
   uint16_t _cal_status;
 
+#endif
   uint32_t _frequencies[POINT_COUNT];
+#ifdef __VNA__
   float _cal_data[5][POINT_COUNT][2];
   float _electrical_delay; // picoseconds
-  
+#endif
   trace_t _trace[TRACE_COUNT];
   marker_t _markers[MARKER_COUNT];
   int _active_marker;
+#ifdef __VNA__
   uint8_t _domain_mode; /* 0bxxxxxffm : where ff: TD_FUNC m: DOMAIN_MODE */
   uint8_t _velocity_factor; // %
+#endif
 
   int32_t checksum;
 } properties_t;
@@ -356,21 +393,25 @@ extern int8_t previous_marker;
 #define frequency0 current_props._frequency0
 #define frequency1 current_props._frequency1
 #define sweep_points current_props._sweep_points
+#ifdef __VNA__
 #define cal_status current_props._cal_status
+#endif
 #define frequencies current_props._frequencies
+#ifdef __VNA__
 #define cal_data active_props->_cal_data
 #define electrical_delay current_props._electrical_delay
-
+#endif
 #define trace current_props._trace
 #define markers current_props._markers
 #define active_marker current_props._active_marker
+#ifdef __VNA__
 #define domain_mode current_props._domain_mode
 #define velocity_factor current_props._velocity_factor
 
 int caldata_save(int id);
 int caldata_recall(int id);
 const properties_t* caldata_ref(int id);
-
+#endif
 int config_save(void);
 int config_recall(void);
 
@@ -402,11 +443,14 @@ void handle_touch_interrupt(void);
 
 #define TOUCH_THRESHOLD 2000
 
+#ifdef __VNA__
 void touch_cal_exec(void);
+#endif
 void touch_draw_test(void);
 void enter_dfu(void);
 
 extern double my_atof(const char *p);
+
 /*
  * adc.c
  */
@@ -417,7 +461,6 @@ void adc_start_analog_watchdogd(ADC_TypeDef *adc, uint32_t chsel);
 void adc_stop(ADC_TypeDef *adc);
 int16_t adc_vbat_read(ADC_TypeDef *adc);
 int16_t adc_tjun_read(ADC_TypeDef *adc);
-
 
 /*
  * misclinous

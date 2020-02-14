@@ -17,13 +17,16 @@
  * the Free Software Foundation, Inc., 51 Franklin Street,
  * Boston, MA 02110-1301, USA.
  */
-
 #include "ch.h"
 #include "hal.h"
 #include "usbcfg.h"
+#ifdef __VNA__
 #include "si5351.h"
+#endif
 #include "nanovna.h"
+#ifdef __VNA__
 #include "fft.h"
+#endif
 
 #include <chprintf.h>
 #include <shell.h>
@@ -32,12 +35,20 @@
 #include <ctype.h>
 #include <math.h>
 
+#ifdef __VNA__
 #define START_MIN 10000
 #define STOP_MAX 1500000000
+#endif
+#ifdef __SA__
+#define START_MIN 0
+#define STOP_MAX 350000000
+#endif
 
+#ifdef __VNA__
 static void apply_error_term_at(int i);
 static void apply_edelay_at(int i);
 static void cal_interpolate(int s);
+#endif
 static void update_frequencies(void);
 static void set_frequencies(uint32_t start, uint32_t stop, int16_t points);
 static bool sweep(bool break_on_operation);
@@ -45,20 +56,27 @@ static bool sweep(bool break_on_operation);
 mutex_t mutex_sweep;
 mutex_t mutex_ili9341;
 
+#ifdef __VNA__
 #define DRIVE_STRENGTH_AUTO (-1)
 #define FREQ_HARMONICS (config.harmonic_freq_threshold)
 #define IS_HARMONIC_MODE(f) ((f) > FREQ_HARMONICS)
 
 static int32_t frequency_offset = 5000;
+#endif
 static uint32_t frequency = 10000000;
+#ifdef __VNA__
 static int8_t drive_strength = SI5351_CLK_DRIVE_STRENGTH_8MA;
+#endif
 int8_t sweep_enabled = TRUE;
 static int8_t sweep_once = FALSE;
+#ifdef __VNA__
 static int8_t cal_auto_interpolate = TRUE;
+#endif
 uint16_t redraw_request = 0; // contains REDRAW_XXX flags
 int16_t vbat = 0;
+#ifdef __VNA__
 bool pll_lock_failed;
-
+#endif
 
 static THD_WORKING_AREA(waThread1, 640);
 static THD_FUNCTION(Thread1, arg)
@@ -123,6 +141,7 @@ void toggle_sweep(void)
   sweep_enabled = !sweep_enabled;
 }
 
+#ifdef __VNA__
 static float bessel0(float x) {
 	const float eps = 0.0001;
 
@@ -222,6 +241,7 @@ static void transform_domain(void)
     }
     chMtxUnlock(&mutex_ili9341); // [/protect spi_buffer]
 }
+#endif
 
 static void cmd_pause(BaseSequentialStream *chp, int argc, char *argv[])
 {
@@ -240,8 +260,10 @@ static void cmd_resume(BaseSequentialStream *chp, int argc, char *argv[])
     // restore frequencies array and cal
     chMtxLock(&mutex_sweep);
     update_frequencies();
+#ifdef __VNA__
     if (cal_auto_interpolate && (cal_status & CALSTAT_APPLY))
         cal_interpolate(lastsaveid);
+#endif
     chMtxUnlock(&mutex_sweep);
     resume_sweep();
 }
@@ -283,6 +305,7 @@ static const int8_t gain_table[][2] = {
 
 # endif
 
+#ifdef __VNA__
 //NanoVNA-H REV3.4
 static const int8_t gain_table[][2] = {
     {  0,  0 },     // 1st: 0 ~ 300MHz
@@ -305,6 +328,7 @@ static int adjust_gain(int newfreq)
   }
   return delay;
 }
+#endif
 
 static int set_frequency(uint32_t freq)
 {
@@ -312,6 +336,7 @@ static int set_frequency(uint32_t freq)
     if (frequency == freq)
       return delay;
 
+#ifdef __VNA__
     delay += adjust_gain(freq);
 
     int8_t ds = drive_strength;
@@ -319,11 +344,12 @@ static int set_frequency(uint32_t freq)
       ds = freq > FREQ_HARMONICS ? SI5351_CLK_DRIVE_STRENGTH_8MA : SI5351_CLK_DRIVE_STRENGTH_2MA;
     }
     delay += si5351_set_frequency_with_offset(freq, frequency_offset, ds);
-
+#endif
     frequency = freq;
     return delay;
 }
 
+#ifdef __VNA__
 static void cmd_offset(BaseSequentialStream *chp, int argc, char *argv[])
 {
     if (argc != 1) {
@@ -335,6 +361,7 @@ static void cmd_offset(BaseSequentialStream *chp, int argc, char *argv[])
     set_frequency(frequency);
     chMtxUnlock(&mutex_sweep);
 }
+#endif
 
 static void cmd_freq(BaseSequentialStream *chp, int argc, char *argv[])
 {
@@ -356,7 +383,9 @@ static void cmd_power(BaseSequentialStream *chp, int argc, char *argv[])
         chprintf(chp, "usage: power {0-3|-1}\r\n");
         return;
     }
+#ifdef __VNA__
     drive_strength = atoi(argv[0]);
+#endif
     chMtxLock(&mutex_sweep);
     set_frequency(frequency);
     chMtxUnlock(&mutex_sweep);
@@ -389,6 +418,7 @@ static void cmd_dac(BaseSequentialStream *chp, int argc, char *argv[])
 #endif
 
 
+#ifdef __VNA__
 static void cmd_threshold(BaseSequentialStream *chp, int argc, char *argv[])
 {
     int value;
@@ -402,6 +432,7 @@ static void cmd_threshold(BaseSequentialStream *chp, int argc, char *argv[])
     config.harmonic_freq_threshold = value;
     chMtxUnlock(&mutex_sweep);
 }
+#endif
 
 static void cmd_saveconfig(BaseSequentialStream *chp, int argc, char *argv[])
 {
@@ -428,6 +459,7 @@ static void cmd_clearconfig(BaseSequentialStream *chp, int argc, char *argv[])
 //    chprintf(chp, "WARNING: Do reset manually to take effect.\r\n");
 }
 
+#ifdef __VNA__
 static struct {
   int16_t rms[2];
   int16_t ave[2];
@@ -443,11 +475,13 @@ static int16_t rx_buffer[AUDIO_BUFFER_LEN * 2];
 int16_t dump_buffer[AUDIO_BUFFER_LEN];
 int16_t dump_selection = 0;
 #endif
+#endif
 
 static volatile int16_t wait_count = 0;
 
-float measured[2][POINT_COUNT][2];
+float measured[3][POINT_COUNT];
 
+#ifdef __VNA__
 static void wait_dsp(int count)
 {
   wait_count = count;
@@ -504,14 +538,23 @@ static const I2SConfig i2sconfig = {
   .i2scfgr      = 0,                    // i2scfgr
   .i2spr        = 2                     // i2spr
 };
+#endif
+
+#ifdef __VNA__
+#define MAX_DATA    6
+#endif
+#ifdef __SA__
+#define MAX_DATA    2
+#endif
+
 
 static void cmd_data(BaseSequentialStream *chp, int argc, char *argv[])
 {
     int sel = 0;
     if (argc == 1)
         sel = atoi(argv[0]);
-    if (sel < 0 || sel > 6) {
-        chprintf(chp, "usage: data [array]\r\n");
+    if (sel < 0 || sel > MAX_DATA) {
+      chprintf(chp, "usage: data [array]\r\n");
     } else {
         if (sel > 1) 
             sel = sel-2; 
@@ -519,7 +562,12 @@ static void cmd_data(BaseSequentialStream *chp, int argc, char *argv[])
         for (int i = 0; i < sweep_points; i++) {
 #ifndef __USE_STDIO__
             // WARNING: chprintf doesn't support proper float formatting
+#ifdef __VNA__
             chprintf(chp, "%f %f\r\n", measured[sel][i][0], measured[sel][i][1]);
+#endif
+#ifdef __SA__
+            chprintf(chp, "%f %f\r\n", measured[sel][i]);
+#endif
 #else
             // printf floating point losslessly: float="%.9g", double="%.17g"
             char tmpbuf[20];
@@ -607,6 +655,7 @@ static void cmd_capture(BaseSequentialStream *chp, int argc, char *argv[])
 //  chprintf(chp, "%d %d\r\n", gamma[0], gamma[1]);
 //}
 
+#ifdef __VNA__
 static void (*sample_func)(float *gamma) = calculate_gamma;
 
 static void cmd_sample(BaseSequentialStream *chp, int argc, char *argv[])
@@ -625,7 +674,7 @@ static void cmd_sample(BaseSequentialStream *chp, int argc, char *argv[])
   }
   chprintf(chp, "usage: sample {gamma|ampl|ref}\r\n");
 }
-
+#endif
 
 #if 0
 int32_t frequency0 = 1000000;
@@ -645,36 +694,56 @@ config_t config = {
   .grid_color =        0x1084,
   .menu_normal_color = 0xffff,
   .menu_active_color = 0x7777,
-  .trace_color =       { RGBHEX(0xffe31f), RGBHEX(0x00bfe7), RGBHEX(0x1fe300), RGBHEX(0xe7079f) },
+  .trace_color =       { RGBHEX(0xffe31f), RGBHEX(0x00bfe7), RGBHEX(0x1fe300)},
   .touch_cal =         { 370, 540, 154, 191 },  //{ 620, 600, 160, 190 },
+#ifdef __VNA__
   .default_loadcal =   0,
   .harmonic_freq_threshold = 300000000,
+#endif
   .vbat_offset =       480,
   .checksum =          0
 };
 
 properties_t current_props = {
   .magic =              CONFIG_MAGIC,
+#ifdef __VNA__
   ._frequency0 =        50000, // start = 50kHz
   ._frequency1 =        900000000, // end = 900MHz
+#endif
+#ifdef __SA__
+  ._frequency0 =        0, // start = 0Hz
+  ._frequency1 =        350000000, // end = 350MHz
+#endif
   ._sweep_points =      POINT_COUNT,
+#ifdef __VNA__
   ._cal_status =        0,
   //._frequencies =     {},
   //._cal_data =        {},
   ._electrical_delay =  0,
+#endif
   ._trace = /*[4] */
-  {/*enable, type, channel, polar, scale, refpos*/
+  {
+#ifdef __VNA__
+   /*enable, type, channel, polar, scale, refpos*/
     { 1, TRC_LOGMAG, 0, 0, 1.0, 7.0 },
     { 1, TRC_LOGMAG, 1, 0, 1.0, 7.0 },
     { 1, TRC_SMITH,  0, 1, 1.0, 0.0 },
     { 1, TRC_PHASE,  1, 0, 1.0, 4.0 }
+#endif
+#ifdef __SA__
+    { 1, TRC_LOGMAG, 0, 0, 1.0, 7.0 },  //Actual
+    { 0, TRC_LOGMAG, 1, 0, 1.0, 7.0 },  //Stored
+    { 0, TRC_LOGMAG,  2, 1, 1.0, 0.0 }   //Processed
+#endif
   },
   ._markers = /*[4] */ {
     { 1, 30, 0 }, { 0, 40, 0 }, { 0, 60, 0 }, { 0, 80, 0 }
   },
   ._active_marker =        0,
+#ifdef __VNA__
   ._domain_mode =          0,
   ._velocity_factor =     70,
+#endif
   .checksum =              0
 };
 properties_t *active_props = &current_props;
@@ -687,18 +756,23 @@ static void ensure_edit_config(void)
   //memcpy(&current_props, active_props, sizeof(config_t));
   active_props = &current_props;
   // move to uncal state
+#ifdef __VNA__
   cal_status = 0;
+#endif
 }
 
 // main loop for measurement
 static bool sweep(bool break_on_operation)
 {
-    pll_lock_failed = false;
-    for (int i = 0; i < sweep_points; i++) {
+#ifdef __VNA__
+  pll_lock_failed = false;
+#endif
+  for (int i = 0; i < sweep_points; i++) {
         int delay = set_frequency(frequencies[i]);
         delay = delay < 3 ? 3 : delay;
         delay = delay > 8 ? 8 : delay;
     
+#ifdef __VNA__
         tlv320aic3204_select(0); // CH0:REFLECT
         wait_dsp(delay);
 
@@ -716,13 +790,15 @@ static bool sweep(bool break_on_operation)
 
         if (electrical_delay != 0)
             apply_edelay_at(i);
+#endif
 
         // back to toplevel to handle ui operation
         if (operation_requested && break_on_operation)
             return false;
     }
-
+#ifdef __VNA__
     transform_domain();
+#endif
     return true;
 }
 
@@ -842,9 +918,10 @@ static void cmd_scan(BaseSequentialStream *chp, int argc, char *argv[])
   pause_sweep();
   chMtxLock(&mutex_sweep);
   set_frequencies(start, stop, points);
+#ifdef __VNA__
   if (cal_auto_interpolate && (cal_status & CALSTAT_APPLY))
     cal_interpolate(lastsaveid);
-
+#endif
   sweep_once = TRUE;
   chMtxUnlock(&mutex_sweep);
 
@@ -950,7 +1027,9 @@ void set_sweep_frequency(int type, int32_t freq)
   chMtxLock(&mutex_sweep);
   int32_t center;
   int32_t span;
+#ifdef __VNA__
   int cal_applied = cal_status & CALSTAT_APPLY;
+#endif
   switch (type) {
   case ST_START:
     ensure_edit_config();
@@ -1031,8 +1110,10 @@ void set_sweep_frequency(int type, int32_t freq)
     break;
   }
 
+#ifdef __VNA__
   if (cal_auto_interpolate && cal_applied)
     cal_interpolate(lastsaveid);
+#endif
   chMtxUnlock(&mutex_sweep);
 }
 
@@ -1107,7 +1188,7 @@ usage:
   chprintf(chp, "\tsweep {start|stop|center|span|cw} {freq(Hz)}\r\n");
 }
 
-
+#ifdef __VNA__
 static void eterm_set(int term, float re, float im)
 {
   int i;
@@ -1545,6 +1626,7 @@ static void cmd_recall(BaseSequentialStream *chp, int argc, char *argv[])
     chMtxUnlock(&mutex_sweep);
     resume_sweep();
 }
+#endif
 
 static const struct {
   const char *name;
@@ -1552,6 +1634,7 @@ static const struct {
   float scale_unit;
 } trace_info[] = {
   { "LOGMAG", 7, 10 },
+#ifdef __VNA__
   { "PHASE",  4, 90 },
   { "DELAY",  4,  1e-9 },
   { "SMITH",  0,  1 },
@@ -1562,12 +1645,19 @@ static const struct {
   { "IMAG",   4,  0.25 },
   { "R",      0, 100 },
   { "X",      4, 100 }
+#endif
 };
 
-static const char * const trc_channel_name[] = {
+#ifdef __VNA__
+const char * const trc_channel_name[] = {
   "CH0", "CH1"
 };
-
+#endif
+#ifdef __SA__
+const char * const trc_channel_name[] = {
+  "ACTUAL", "STORED", "COMPUTED"
+};
+#endif
 const char* get_trace_typename(int t)
 {
   return trace_info[trace[t].type].name;
@@ -1575,14 +1665,18 @@ const char* get_trace_typename(int t)
 
 void set_trace_type(int t, int type)
 {
+#ifdef __VNA__
   int polar = type == TRC_SMITH || type == TRC_POLAR;
+#endif
   int enabled = type != TRC_OFF;
   int force = FALSE;
 
+#ifdef __VNA__
   if (trace[t].polar != polar) {
     trace[t].polar = polar;
     force = TRUE;
   }
+#endif
   if (trace[t].enabled != enabled) {
     trace[t].enabled = enabled;
     force = TRUE;
@@ -1590,8 +1684,10 @@ void set_trace_type(int t, int type)
   if (trace[t].type != type) {
     trace[t].type = type;
     trace[t].refpos = trace_info[type].refpos;
+#ifdef __VNA__
     if (polar)
       force = TRUE;
+#endif
   }    
   if (force) {
     plot_into_index(measured);
@@ -1641,7 +1737,7 @@ double my_atof(const char *p)
     neg = TRUE;
   if (*p == '-' || *p == '+')
     p++;
-    double x = atoi(p);
+  double x = atoi(p);
   while (isdigit((int)*p))
     p++;
   if (*p == '.') {
@@ -1707,6 +1803,7 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
   if (argc > 1) {
     if (strcmp(argv[1], "logmag") == 0) {
       set_trace_type(t, TRC_LOGMAG);
+#ifdef __VNA__
     } else if (strcmp(argv[1], "phase") == 0) {
       set_trace_type(t, TRC_PHASE);
     } else if (strcmp(argv[1], "polar") == 0) {
@@ -1729,6 +1826,7 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
       set_trace_type(t, TRC_X);
     } else if (strcmp(argv[1], "linear") == 0) {
       set_trace_type(t, TRC_LINEAR);
+#endif
     } else if (strcmp(argv[1], "off") == 0) {
       set_trace_type(t, TRC_OFF);
     } else if (strcmp(argv[1], "scale") == 0 && argc >= 3) {
@@ -1752,11 +1850,17 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
  exit:
   return;
  usage:
+#ifdef __VNA__
   chprintf(chp, "trace {0|1|2|3|all} [logmag|phase|smith|linear|delay|swr|real|imag|r|x|off] [src]\r\n");
+#endif
+#ifdef __SA__
+  chprintf(chp, "trace {0|1|2|all} [logmag|off] [src]\r\n");
+#endif
   chprintf(chp, "trace {0|1|2|3} {scale|refpos} {value}\r\n");
 }
 
 
+#ifdef __VNA__
 void set_electrical_delay(float picoseconds)
 {
   if (electrical_delay != picoseconds) {
@@ -1780,7 +1884,7 @@ static void cmd_edelay(BaseSequentialStream *chp, int argc, char *argv[])
     set_electrical_delay(my_atof(argv[0]));
   }
 }
-
+#endif
 
 static void cmd_marker(BaseSequentialStream *chp, int argc, char *argv[])
 {
@@ -1880,6 +1984,7 @@ static void cmd_frequencies(BaseSequentialStream *chp, int argc, char *argv[])
   }
 }
 
+#ifdef __VNA__
 static void set_domain_mode(int mode) // accept DOMAIN_FREQ or DOMAIN_TIME
 {
   if (mode != (domain_mode & DOMAIN_MODE)) {
@@ -1932,6 +2037,7 @@ static void cmd_transform(BaseSequentialStream *chp, int argc, char *argv[])
 usage:
   chprintf(chp, "usage: transform {on|off|impulse|step|bandpass|minimum|normal|maximum} [...]\r\n");
 }
+#endif
 
 static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
 {
@@ -1987,6 +2093,7 @@ static void cmd_test(BaseSequentialStream *chp, int argc, char *argv[])
     chMtxUnlock(&mutex_sweep);
 }
 
+#ifdef __VNA__
 static void cmd_gain(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int rvalue;
@@ -2047,6 +2154,7 @@ static void cmd_stat(BaseSequentialStream *chp, int argc, char *argv[])
   extern int awd_count;
   chprintf(chp, "awd: %d\r\n", awd_count);
 }
+#endif
 
 
 #ifndef VERSION
@@ -2142,7 +2250,9 @@ static const ShellCommand commands[] =
     { "version", cmd_version },
     { "reset", cmd_reset },
     { "freq", cmd_freq },
+#ifdef __VNA__
     { "offset", cmd_offset },
+#endif
 #ifdef __CMD_TIME__
     { "time", cmd_time },
 #endif
@@ -2156,11 +2266,15 @@ static const ShellCommand commands[] =
     { "dump", cmd_dump },
 #endif
     { "frequencies", cmd_frequencies },
+#ifdef __VNA__
     { "port", cmd_port },
     { "stat", cmd_stat },
     { "gain", cmd_gain },
+#endif
     { "power", cmd_power },
+#ifdef __VNA__
     { "sample", cmd_sample },
+#endif
     //{ "gamma", cmd_gamma },
     { "scan", cmd_scan },
 #ifdef __SCANRAW_CMD__
@@ -2172,16 +2286,22 @@ static const ShellCommand commands[] =
     { "touchtest", cmd_touchtest },
     { "pause", cmd_pause },
     { "resume", cmd_resume },
+#ifdef __VNA__
     { "cal", cmd_cal },
     { "save", cmd_save },
     { "recall", cmd_recall },
+#endif
     { "trace", cmd_trace },
     { "marker", cmd_marker },
+#ifdef __VNA__
     { "edelay", cmd_edelay },
+#endif
     { "capture", cmd_capture },
     { "vbat", cmd_vbat },
+#ifdef __VNA__
     { "transform", cmd_transform },
     { "threshold", cmd_threshold },
+#endif
 #ifdef __COLOR_CMD__
     { "color", cmd_color },
 #endif
@@ -2225,11 +2345,12 @@ int main(void)
 
     //palSetPadMode(GPIOB, 8, PAL_MODE_ALTERNATE(1) | PAL_STM32_OTYPE_OPENDRAIN);
     //palSetPadMode(GPIOB, 9, PAL_MODE_ALTERNATE(1) | PAL_STM32_OTYPE_OPENDRAIN);
+#ifdef __VNA__
     i2cStart(&I2CD1, &i2ccfg);
     while (!si5351_init()) {
         ili9341_drawstring_size("error: si5351_init failed", 0, 0, RGBHEX(0xff0000), 0x0000, 2);
     }
-
+#endif
     // MCO on PA8
     //palSetPadMode(GPIOA, 8, PAL_MODE_ALTERNATE(0));
   /*
@@ -2270,6 +2391,7 @@ int main(void)
   /* initial frequencies */
   update_frequencies();
 
+#ifdef __VNA__
   /* restore frequencies and calibration properties from flash memory */
   if (config.default_loadcal >= 0)
     caldata_recall(config.default_loadcal);
@@ -2285,7 +2407,7 @@ int main(void)
   i2sObjectInit(&I2SD2);
   i2sStart(&I2SD2, &i2sconfig);
   i2sStartExchange(&I2SD2);
-
+#endif
   ui_init();
 
   /*
@@ -2296,8 +2418,9 @@ int main(void)
 
     // redraw_frame();
      draw_frequencies();
+#ifdef __VNA__
      draw_cal_status();
-	 
+#endif
     chThdSetPriority(HIGHPRIO);
     chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
 

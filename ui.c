@@ -139,6 +139,7 @@ static void ui_process_keypad(void);
 
 static void menu_push_submenu(const menuitem_t *submenu);
 static void menu_move_back(void);
+#ifdef __VNA__
 static void menu_calop_cb(int item);
 static void menu_caldone_cb(int item);
 static void menu_save_cb(int item);
@@ -339,6 +340,11 @@ static const menuitem_t menu_top[] = {
  // MENUITEM_CLOSE,
   MENUITEM_END
 };
+#endif
+
+#ifdef __SA__
+#include "ui_sa.c"
+#endif
 
 #define MENU_STACK_DEPTH_MAX 4
 static uint8_t menu_current_level = 0;
@@ -633,7 +639,7 @@ show_version(void)
   touch_start_watchdog();
 }
 
-
+#ifdef __VNA__
 void
 show_logo(void)
 {
@@ -669,7 +675,7 @@ show_logo(void)
     ili9341_drawstring_7x13("Build Time: " __DATE__ " - " __TIME__, x, y += 15, 0xffff, 0x0000);
 #endif
 }
-
+#endif
 
 
 void enter_dfu(void)
@@ -695,6 +701,7 @@ void enter_dfu(void)
 
 
 
+#ifdef __VNA__
 static void menu_calop_cb(int item)
 {
   switch (item) {
@@ -1104,6 +1111,7 @@ static void menu_marker_sel_cb(int item)
   redraw_marker(active_marker, TRUE);
   draw_menu();
 }
+#endif
 
 static void ensure_selection(void)
 {
@@ -1176,6 +1184,7 @@ static void menu_invoke(int item)
     break;
   }
 }
+
 #if !defined(ANTENNA_ANALYZER)
 #define KP_X(x) (48*(x) + 2 + (320-64-192))
 #else
@@ -1278,6 +1287,7 @@ static const char * const keypad_mode_label[] = {
   "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "EDELAY", "VELOCITY%", "DELAY"
 };
 
+
 static void draw_keypad(void)
 {
   int i = 0;
@@ -1356,6 +1366,7 @@ static int menu_is_multiline(const char *label, const char **l1, const char **l2
   return TRUE;
 }
 
+#ifdef __VNA__
 static void menu_item_modify_attribute(
     const menuitem_t *menu, int item, uint16_t *fg, uint16_t *bg)
 {
@@ -1406,6 +1417,12 @@ static void menu_item_modify_attribute(
       }
   }
 }
+#endif
+
+#ifdef __VNA__
+extern void menu_item_modify_attribute(
+    const menuitem_t *menu, int item, uint16_t *fg, uint16_t *bg);
+#endif
 
 static void draw_menu_buttons(const menuitem_t *menu)
 {
@@ -1520,6 +1537,7 @@ static void leave_ui_mode(void)
   }
 }
 
+#ifdef __VNA__
 static void fetch_numeric_target(void)
 {
   switch (keypad_mode) {
@@ -1564,6 +1582,7 @@ static void fetch_numeric_target(void)
   }
   uistat.previous_value = uistat.value;
 }
+#endif
 
 #if 0
 static void set_numeric_value(void)
@@ -1770,6 +1789,7 @@ static int keypad_click(int key)
     case KM_REFPOS:
       set_trace_refpos(uistat.current_trace, value);
       break;
+#ifdef __VNA__
     case KM_EDELAY:
       set_electrical_delay(value); // pico seconds
       break;
@@ -1779,6 +1799,7 @@ static int keypad_click(int key)
     case KM_SCALEDELAY:
       set_trace_scale(uistat.current_trace, value * 1e-12); // pico second
       break;
+#endif
     }
 
     return KP_DONE;

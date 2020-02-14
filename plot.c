@@ -95,6 +95,7 @@ void update_grid(void)
   redraw_request |= REDRAW_FREQUENCY;
 }
 
+#ifdef __VNA__
 static int circle_inout(int x, int y, int r)
 {
   int d = x*x + y*y - r*r;
@@ -339,7 +340,7 @@ static int smith_grid3(int x, int y)
   }
   return 0;
 }
-
+#endif
 #if 0
 int
 rectangular_grid(int x, int y)
@@ -427,6 +428,7 @@ static float logmag(float *v)
   return log10f(v[0]*v[0] + v[1]*v[1]) * 10;
 }
 
+#ifdef __VNA__
 /*
  * calculate phase[-2:2] of coefficient
  */ 
@@ -506,7 +508,7 @@ static void cartesian_scale(float re, float im, int *xp, int *yp, float scale)
   *xp = WIDTH/2 + x;
   *yp = HEIGHT/2 - y;
 }
-
+#endif
 
 static uint32_t trace_into_index(
     int x, int t, int i, 
@@ -522,6 +524,7 @@ static uint32_t trace_into_index(
   case TRC_LOGMAG:
     v = refpos - logmag(coeff[i]) * scale;
     break;
+#ifdef __VNA__
   case TRC_PHASE:
     v = refpos - phase(coeff[i]) * scale;
     break;
@@ -552,6 +555,7 @@ static uint32_t trace_into_index(
     cartesian_scale(coeff[i][0], coeff[i][1], &x, &y, scale);
     return INDEX(x +CELLOFFSETX, y, i);
     break;
+#endif
   }
   if (v < 0) v = 0;
   if (v > 8) v = 8;
@@ -613,6 +617,7 @@ static int string_value_with_prefix(char *buf, int len, float val, char unit)
 }
 
 
+#ifdef __VNA__
 #define PI2 6.283184
 
 static void gamma2imp(char *buf, int len, const float coeff[2], uint32_t frequency)
@@ -651,6 +656,7 @@ static void gamma2reactance(char *buf, int len, const float coeff[2])
   float zi = 2*coeff[1] * d;
   string_value_with_prefix(buf, len, zi, S_OHM[0]);
 }
+#endif
 
 static void trace_get_value_string(
     int t, char *buf, int len,
@@ -667,6 +673,7 @@ static void trace_get_value_string(
     else
       chsnprintf(buf, len, "%.2fdB", v);
     break;
+#ifdef __VNA__
   case TRC_PHASE:
     v = phase(coeff[i]);
     chsnprintf(buf, len, "%.3f" S_DEGREE, v);
@@ -702,7 +709,8 @@ static void trace_get_value_string(
   case TRC_POLAR:
     chsnprintf(buf, len, "%.3f %.3fj", coeff[i][0], coeff[i][1]);
     break;
-  }
+#endif
+    }
 }
 
 void trace_get_info(int t, char *buf, int len)
@@ -713,6 +721,7 @@ void trace_get_info(int t, char *buf, int len)
   case TRC_LOGMAG:
     chsnprintf(buf, len, "%s %ddB/", type, (int)get_trace_scale(t));
     break;
+#ifdef __VNA__
   case TRC_PHASE:
     chsnprintf(buf, len, "%s %d" S_DEGREE "/", type, (int)get_trace_scale(t));
     break;
@@ -725,9 +734,11 @@ void trace_get_info(int t, char *buf, int len)
     n = chsnprintf(buf, len, "%s ", type);
     string_value_with_prefix(buf+n, len-n, get_trace_scale(t), '/');
     break;
+#endif
   }
 }
 
+#ifdef __VNA__
 static float time_of_index(int idx) {
    return 1.0 / (float)(frequencies[1] - frequencies[0]) / (float)FFT_SIZE * idx;
 }
@@ -737,7 +748,7 @@ static float distance_of_index(int idx) {
    float distance = ((float)idx * (float)SPEED_OF_LIGHT) / ( (float)(frequencies[1] - frequencies[0]) * (float)FFT_SIZE * 2.0);
    return distance * (velocity_factor / 100.0);
 }
-
+#endif
 
 static inline void mark_map(int x, int y)
 {
@@ -1182,6 +1193,7 @@ static void draw_cell(int m, int n)
     if (!trace[t].enabled)
       continue;
 
+#ifdef __VNA__
     if (trace[t].type == TRC_SMITH)
       grid_mode |= GRID_SMITH;
     //else if (trace[t].type == TRC_ADMIT)
@@ -1189,6 +1201,7 @@ static void draw_cell(int m, int n)
     else if (trace[t].type == TRC_POLAR)
       grid_mode |= GRID_POLAR;
     else
+#endif
       grid_mode |= GRID_RECTANGULAR;
   }
 
@@ -1209,6 +1222,7 @@ static void draw_cell(int m, int n)
   } else {
     memset(spi_buffer, 0, sizeof spi_buffer);
   }
+#ifdef __VNA__
   if (grid_mode & (GRID_SMITH|GRID_ADMIT|GRID_POLAR)) {
     for (y = 0; y < h; y++) {
       for (x = 0; x < w; x++) {
@@ -1224,6 +1238,7 @@ static void draw_cell(int m, int n)
       }
     }
   }
+#endif
   PULSE;
 
 #if 1
@@ -1250,6 +1265,7 @@ static void draw_cell(int m, int n)
     }
   }
 #endif
+#ifdef __VNA__
 #if 1
   /* draw polar plot */
   for (t = 0; t < TRACE_COUNT; t++) {
@@ -1272,7 +1288,7 @@ static void draw_cell(int m, int n)
     }
   }
 #endif
-
+#endif
   PULSE;
   //draw marker symbols on each trace
   cell_draw_markers(m, n, w, h);
@@ -1310,8 +1326,10 @@ void draw_all(bool flush)
         draw_all_cells(flush);
     if (redraw_request & REDRAW_FREQUENCY)
         draw_frequencies();
+#ifdef __VNA__
     if (redraw_request & REDRAW_CAL_STATUS)
         draw_cal_status();
+#endif
     redraw_request = 0;
 }
 
@@ -1401,7 +1419,7 @@ static void cell_draw_marker_info(int m, int n, int w, int h)
     int ypos = 1 + (j/2)*7;
     xpos -= m * CELLWIDTH -CELLOFFSETX;
     ypos -= n * CELLHEIGHT;
-    chsnprintf(buf, sizeof buf, "CH%d", trace[t].channel);
+    chsnprintf(buf, sizeof buf,trc_channel_name[trace[t].channel]);
     cell_drawstring_invert_5x7(w, h, buf, xpos, ypos, config.trace_color[t], t == uistat.current_trace);
     xpos += 20;
     trace_get_info(t, buf, sizeof buf);
@@ -1418,6 +1436,7 @@ static void cell_draw_marker_info(int m, int n, int w, int h)
   // LEFT
   int ypos = 1 + (j/2)*7;
   ypos -= n * CELLHEIGHT;
+#ifdef __VNA__
   if (electrical_delay != 0) {
     // draw electrical delay
     int xpos = 21;
@@ -1433,7 +1452,7 @@ static void cell_draw_marker_info(int m, int n, int w, int h)
     cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
     ypos += 7;
   }
-
+#endif
 #ifdef __DRAW_Z__  
   {
 #define ZCOLOR RGBHEX(0x00ffff)
@@ -1469,14 +1488,18 @@ static void cell_draw_marker_info(int m, int n, int w, int h)
   xpos += 5;
   cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
   xpos += 14;
+#ifdef __VNA__
   if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
+#endif
     frequency_string(buf, sizeof buf, frequencies[idx]);
+#ifdef __VNA__
   } else {
     //chsnprintf(buf, sizeof buf, "%d ns %.1f m", (uint16_t)(time_of_index(idx) * 1e9), distance_of_index(idx));
     int n = string_value_with_prefix(buf, sizeof buf, time_of_index(idx), 's');  
     buf[n++] = ' ';
     string_value_with_prefix(&buf[n], sizeof buf-n, distance_of_index(idx), 'm');
   }
+#endif
   cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
 
   // draw marker delta
@@ -1488,8 +1511,11 @@ static void cell_draw_marker_info(int m, int n, int w, int h)
     chsnprintf(buf, sizeof buf, "D%d:", previous_marker+1);
     cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
     xpos += 19;
+#ifdef __VNA__
     if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
+#endif
       frequency_string(buf, sizeof buf, frequencies[idx] - frequencies[idx0]);
+#ifdef __VNA__
     } else {
       //chsnprintf(buf, sizeof buf, "%d ns %.1f m", (uint16_t)(time_of_index(idx) * 1e9 - time_of_index(idx0) * 1e9),
       //                                            distance_of_index(idx) - distance_of_index(idx0));
@@ -1497,6 +1523,7 @@ static void cell_draw_marker_info(int m, int n, int w, int h)
       buf[n++] = ' ';
       string_value_with_prefix(&buf[n], sizeof buf - n, distance_of_index(idx) - distance_of_index(idx0), 'm');
     }
+#endif
     cell_drawstring_5x7(w, h, buf, xpos, ypos, 0xffff);
   }
 }
@@ -1525,8 +1552,10 @@ static void frequency_string(char *buf, size_t len, int32_t freq)
 void draw_frequencies(void)
 {
   char buf[24];
+#ifdef __VNA__
   if ((domain_mode & DOMAIN_MODE) == DOMAIN_FREQ) {
-      if (frequency1 > 0) {
+#endif
+    if (frequency1 > 0) {
         int start = frequency0;
         int stop = frequency1;
         strcpy(buf, "START ");
@@ -1558,6 +1587,7 @@ void draw_frequencies(void)
         chsnprintf(buf, 24, "                             ");
         ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
       }
+#ifdef __VNA__
   } else {
       strcpy(buf, "START 0s        ");
       ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
@@ -1567,8 +1597,10 @@ void draw_frequencies(void)
       strcat(buf, "          ");
       ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
   }
+#endif
 }
 
+#ifdef __VNA__
 void draw_cal_status(void)
 {
   int x = 0;
@@ -1607,7 +1639,7 @@ void draw_cal_status(void)
     y += YSTEP;
   }
 }
-
+#endif
 
 #else
 static void cell_drawchar_7x13(int w, int h, uint8_t ch, int x, int y, uint16_t fg, int invert)
@@ -1666,7 +1698,7 @@ static void cell_draw_marker_info(int m, int n, int w, int h)
     int ypos = 1 + (j)*13;
     xpos -= m * CELLWIDTH -CELLOFFSETX;
     ypos -= n * CELLHEIGHT;
-    chsnprintf(buf, sizeof buf, "CH%d", trace[t].channel);
+    chsnprintf(buf, sizeof buf, trc_channel_name[trace[t].channel]);
     cell_drawstring_invert_7x13(w, h, buf, xpos, ypos, config.trace_color[t], t == uistat.current_trace);
     xpos += 28;
     trace_get_info(t, buf, sizeof buf);
@@ -1937,7 +1969,9 @@ redraw_frame(void)
 {
   ili9341_fill(0, 0, 320, 240, 0);
   draw_frequencies();
+#ifdef __VNA__
   draw_cal_status();
+#endif
 }
 
 void
