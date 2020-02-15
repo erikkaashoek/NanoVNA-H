@@ -52,11 +52,12 @@
 //#endif
      
 #ifdef __VNA__
-extern float measured[2][POINT_COUNT][2];
+typedef float measurement_t[2][POINT_COUNT][2];
 #endif
 #ifdef __SA__
-extern float measured[3][POINT_COUNT];
+typedef float measurement_t[3][POINT_COUNT];
 #endif
+extern measurement_t measured;
 
 extern const char * const trc_channel_name[];
 
@@ -120,7 +121,11 @@ extern int8_t sweep_enabled;
  */
 extern void ui_init(void);
 extern void ui_process(void);
-
+static void ui_process_touch(void);
+extern void touch_cal_exec(void);
+extern void touch_draw_test(void);
+static int32_t get_marker_frequency(int);
+static int btn_wait_release(void);
 enum { OP_NONE = 0, OP_LEVER, OP_TOUCH, OP_FREQCHANGE };
 extern uint8_t operation_requested;
 
@@ -280,7 +285,7 @@ void request_to_draw_cells_behind_menu(void);
 void request_to_draw_cells_behind_numeric_input(void);
 void redraw_marker(int marker, int update_info);
 void trace_get_info(int t, char *buf, int len);
-void plot_into_index(float measured[2][POINT_COUNT][2]);
+void plot_into_index(measurement_t measured);
 void force_set_markmap(void);
 void draw_frequencies(void);
 void draw_all(bool flush);

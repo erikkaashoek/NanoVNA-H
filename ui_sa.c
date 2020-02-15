@@ -2,6 +2,174 @@
 
 #ifdef __SA__
 
+
+void set_sweep_frequency(int type, int32_t frequency);
+uint32_t get_sweep_frequency(int type);
+void clearDisplay(void);
+void ui_process_touch(void);
+void SetPowerGrid(int);
+void SetRefLevel(int);
+void set_refer_output(int);
+void SetAttenuation(int);
+void SetPowerLevel(int);
+void SetGenerate(int);
+void SetRX(int);
+void SetRBW(int);
+void SetSpur(int);
+void SetAverage(int);
+void  SetStorage(void);
+void  SetClearStorage(void);
+void  SetSubtractStorage(void);
+void AllDirty(void);
+void MenuDirty(void);
+void redrawHisto(void);
+
+enum {
+  AV_OFF, AV_MIN, AV_MAX, AV_2, AV_4, AV_8
+};
+
+
+// ===[MENU CALLBACKS]=========================================================
+
+
+int generator_enabled = false;
+
+static void menu_output_cb(int item)
+{
+  switch (item) {
+  case 1: // Toggle generate
+    generator_enabled = !generator_enabled;
+    SetGenerate(generator_enabled);
+    draw_menu();
+    break;
+  }
+  //menu_move_back();
+}
+
+
+static void menu_autosettings_cb(int item)
+{
+    set_sweep_frequency(ST_START, (int32_t) 0);
+    set_sweep_frequency(ST_STOP, (int32_t) 250000000);
+    SetPowerGrid(10);
+    SetRefLevel(-10);
+    set_refer_output(1);
+    SetAttenuation(0);
+    SetPowerLevel(100); // Reset
+    SetRBW(0);
+    SetRX(0);
+  menu_move_back();
+  ui_mode_normal();
+}
+
+
+
+static void menu_config_cb(int item)
+{
+  switch (item) {
+  case 0:
+      touch_cal_exec();
+      redraw_frame();
+      request_to_redraw_grid();
+      draw_menu();
+      break;
+  case 1:
+      touch_draw_test();
+      redraw_frame();
+      request_to_redraw_grid();
+      draw_menu();
+      break;
+  case 2:
+      show_version();
+      redraw_frame();
+      request_to_redraw_grid();
+      draw_menu();
+  }
+}
+
+static void menu_dfu_cb(int item)
+{
+  switch (item) {
+  case 0:
+      enter_dfu();
+  }
+}
+
+int menu_refer_value[]={-1,0,1,2,3,4,5,6};
+static void menu_refer_cb(int item)
+{
+//Serial.println(item);
+  set_refer_output(menu_refer_value[item]); 
+  menu_move_back();
+  ui_mode_normal();
+  draw_cal_status();
+}
+
+static void menu_refer_cb2(int item)
+{
+//Serial.println(item);
+  set_refer_output(menu_refer_value[item+5]); 
+  menu_move_back();
+  ui_mode_normal();
+  draw_cal_status();
+}
+
+static void menu_spur_cb(int item)
+{
+  SetSpur(item); 
+  menu_move_back();
+  ui_mode_normal();
+  draw_cal_status();
+}
+
+static void menu_storage_cb(int item)
+{
+  switch(item) {
+    case 0:
+      SetStorage();
+      break;
+    case 1:
+      SetClearStorage();
+      break;
+    case 2:
+      SetSubtractStorage();
+      break;
+  }
+  menu_move_back();
+  ui_mode_normal();
+  draw_cal_status();
+}
+
+static void menu_average_cb(int item)
+{
+  SetAverage(item); 
+  menu_move_back();
+  ui_mode_normal();
+  draw_cal_status();
+}
+
+
+int rbwsel[]={0,3,10,30,100,300};
+
+static void menu_rbw_cb(int item)
+{
+  SetRBW(rbwsel[item]); 
+  menu_move_back();
+  ui_mode_normal();
+  draw_cal_status();
+}
+
+int menu_dBper_value[]={1,2,5,10,20};
+
+static void menu_dBper_cb(int item)
+{
+  SetPowerGrid(menu_dBper_value[item]); 
+  menu_move_back();
+  ui_mode_normal();
+  draw_cal_status();
+}
+
+
 static void choose_active_trace(void)
 {
   int i;
@@ -15,39 +183,346 @@ static void choose_active_trace(void)
     }
 }
 
-static int32_t get_marker_frequency(int marker)
+static void menu_trace_cb(int item)
 {
-  if (marker < 0 || marker >= MARKER_COUNT)
-    return -1;
-  if (!markers[marker].enabled)
-    return -1;
-  return frequencies[markers[marker].index];
-}
-
-static void active_marker_select(int item)
-{
-  if (item == -1) {
-    active_marker = previous_marker;
-    previous_marker = -1;
-    if (active_marker == -1) {
-      choose_active_marker();
+  if (item < 0 || item >= TRACE_COUNT )
+    return;
+  if (trace[item].enabled) {
+    if (item == uistat.current_trace) {
+      // disable if active trace is selected
+      trace[item].enabled = FALSE;
+      choose_active_trace();
+    } else {
+      // make active selected trace
+      uistat.current_trace = item;
     }
   } else {
-    if (previous_marker != active_marker)
-      previous_marker = active_marker;
-    active_marker = item;
+    trace[item].enabled = TRUE;
+    uistat.current_trace = item;
+  }
+  request_to_redraw_grid();
+  draw_menu();
+}
+
+static void menu_format_cb(int item)
+{
+  switch (item) {
+  case 0:
+//    set_trace_type(uistat.current_trace, TRC_LOGMAG);
+    break;
+  case 1:
+//    set_trace_type(uistat.current_trace, TRC_PHASE);
+    break;
+  case 2:
+//    set_trace_type(uistat.current_trace, TRC_DELAY);
+    break;
+  case 3:
+//    set_trace_type(uistat.current_trace, TRC_SMITH);
+    break;
+  case 4:
+//    set_trace_type(uistat.current_trace, TRC_SWR);
+    break;
+  }
+
+  request_to_redraw_grid();
+  ui_mode_normal();
+  //redraw_all();
+}
+
+static void menu_format2_cb(int item)
+{
+  switch (item) {
+  case 0:
+//    set_trace_type(uistat.current_trace, TRC_POLAR);
+    break;
+  case 1:
+//    set_trace_type(uistat.current_trace, TRC_LINEAR);
+    break;
+  case 2:
+//    set_trace_type(uistat.current_trace, TRC_REAL);
+    break;
+  case 3:
+//    set_trace_type(uistat.current_trace, TRC_IMAG);
+    break;
+  case 4:
+//    set_trace_type(uistat.current_trace, TRC_R);
+    break;
+  case 5:
+//    set_trace_type(uistat.current_trace, TRC_X);
+    break;
+  }
+
+  request_to_redraw_grid();
+  ui_mode_normal();
+}
+
+static void menu_channel_cb(int item)
+{
+  if (item < 0 || item >= 2)
+    return;
+//  set_trace_channel(uistat.current_trace, item);
+  menu_move_back();
+  ui_mode_normal();
+}
+
+static void choose_active_marker(void)
+{
+  int i;
+  for (i = 0; i < MARKER_COUNT; i++)
+    if (markers[i].enabled) {
+      active_marker = i;
+      return;
+    }
+  active_marker = -1;
+}
+
+static void menu_scale_cb(int item)
+{
+  int status;
+  int km = KM_SCALE + item;
+//  if (km == KM_SCALE && trace[uistat.current_trace].type == TRC_DELAY) {
+//    km = KM_SCALEDELAY;
+//  }
+  status = btn_wait_release();
+  if (status & EVT_BUTTON_DOWN_LONG) {
+    ui_mode_numeric(km);
+//    ui_process_numeric();
+  } else {
+    ui_mode_keypad(km);
+    ui_process_keypad();
   }
 }
 
+static void menu_actualpower_cb(int item)
+{
+  int status;
+  int km = KM_ACTUALPOWER;
+  status = btn_wait_release();
+  if (status & EVT_BUTTON_DOWN_LONG) {
+    ui_mode_numeric(km);
+//    ui_process_numeric();
+  } else {
+    ui_mode_keypad(km);
+    ui_process_keypad();
+  }
+}
+
+static void menu_stimulus_cb(int item)
+{
+  int status;
+  switch (item) {
+  case 0: /* START */
+  case 1: /* STOP */
+  case 2: /* CENTER */
+  case 3: /* SPAN */
+  case 4: /* CW */
+    status = btn_wait_release();
+    if (status & EVT_BUTTON_DOWN_LONG) {
+      ui_mode_numeric(item);
+//      ui_process_numeric();
+    } else {
+      ui_mode_keypad(item);
+      ui_process_keypad();
+    }
+    break;
+  case 5: /* PAUSE */
+ //   toggle_sweep();
+    //menu_move_back();
+    //ui_mode_normal();
+    draw_menu();
+    break;
+  }
+}
+
+static void menu_marker_sel_cb(int);
+static void menu_marker_op_cb(int);
+static void menu_marker_sel_cb(int);
 
 // ===[MENU DEFINITION]=========================================================
 
-static const menuitem_t menu_top[] = {
-//  MENUITEM_MENU("CONFIG",    menu_config),
-  //MENUITEM_CLOSE,
+
+static const menuitem_t menu_average[] = {
+  MENUITEM_FUNC("OFF",   menu_average_cb),
+  MENUITEM_FUNC("MIN",   menu_average_cb),
+  MENUITEM_FUNC("MAX",   menu_average_cb),
+  MENUITEM_FUNC(" 2 ",   menu_average_cb),
+  MENUITEM_FUNC(" 4 ",   menu_average_cb),
+  MENUITEM_FUNC(" 8 ",   menu_average_cb),
+  MENUITEM_BACK,
   MENUITEM_END
 };
 
+static const menuitem_t menu_storage[] = {
+  MENUITEM_FUNC("STORE",    menu_storage_cb),
+  MENUITEM_FUNC("CLEAR",    menu_storage_cb),
+  MENUITEM_FUNC("SUBTRACT", menu_storage_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
+};
+
+static const menuitem_t menu_spur[] = {
+  MENUITEM_FUNC("OFF",   menu_spur_cb),
+  MENUITEM_FUNC("ON",    menu_spur_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
+};
+
+static const menuitem_t menu_rbw[] = {
+  MENUITEM_FUNC("  AUTO",   menu_rbw_cb),
+  MENUITEM_FUNC("  3kHz",   menu_rbw_cb),
+  MENUITEM_FUNC(" 10kHz",   menu_rbw_cb),
+  MENUITEM_FUNC(" 30kHz",   menu_rbw_cb),
+  MENUITEM_FUNC("100kHz",   menu_rbw_cb),
+  MENUITEM_FUNC("300kHz",   menu_rbw_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
+};
+
+
+static const menuitem_t menu_dBper[] = {
+  MENUITEM_FUNC("  1dB/",   menu_dBper_cb),
+  MENUITEM_FUNC("  2dB/",   menu_dBper_cb),
+  MENUITEM_FUNC("  5dB/",   menu_dBper_cb),
+  MENUITEM_FUNC(" 10dB/",   menu_dBper_cb),
+  MENUITEM_FUNC(" 20dB/",   menu_dBper_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
+};
+
+
+static const menuitem_t menu_trace[] = {
+  MENUITEM_FUNC("TRACE 0",      menu_trace_cb),
+  MENUITEM_FUNC("TRACE 1",      menu_trace_cb),
+//   #if !defined(ANTENNA_ANALYZER)
+  MENUITEM_FUNC("TRACE 2",      menu_trace_cb),
+  MENUITEM_FUNC("TRACE 3",      menu_trace_cb),
+//    #endif
+  MENUITEM_BACK,
+  MENUITEM_END
+};
+
+static const menuitem_t menu_format2[] = {
+  MENUITEM_FUNC("POLAR",        menu_format2_cb),
+  MENUITEM_FUNC("LINEAR",       menu_format2_cb),
+  MENUITEM_FUNC("REAL",         menu_format2_cb),
+  MENUITEM_FUNC("IMAG",         menu_format2_cb),
+  MENUITEM_FUNC("RESISTANCE",   menu_format2_cb),
+  MENUITEM_FUNC("REACTANCE",    menu_format2_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
+};
+
+static const menuitem_t menu_format[] = {
+  MENUITEM_FUNC("LOGMAG",       menu_format_cb),
+  MENUITEM_FUNC("PHASE",        menu_format_cb),
+  MENUITEM_FUNC("DELAY",        menu_format_cb),
+  MENUITEM_FUNC("SMITH",        menu_format_cb),
+  MENUITEM_FUNC("SWR",          menu_format_cb),
+  MENUITEM_MENU(S_RARROW" MORE", menu_format2),  
+  //MENUITEM_FUNC("LINEAR",     menu_format_cb),
+  //MENUITEM_FUNC("SWR",        menu_format_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
+};
+
+static const menuitem_t menu_refer2[] = {
+  MENUITEM_FUNC("3MHz" ,   menu_refer_cb2),
+  MENUITEM_FUNC("2MHz" ,   menu_refer_cb2),
+  MENUITEM_FUNC("1MHz" ,   menu_refer_cb2),
+  MENUITEM_BACK,
+  MENUITEM_END
+};
+
+static const menuitem_t menu_refer[] = {
+  MENUITEM_FUNC("OFF"  ,   menu_refer_cb),
+  MENUITEM_FUNC("30MHz",   menu_refer_cb),
+  MENUITEM_FUNC("15MHz",   menu_refer_cb),
+  MENUITEM_FUNC("10MHz",   menu_refer_cb),
+  MENUITEM_FUNC("4MHz" ,   menu_refer_cb),
+  MENUITEM_MENU(S_RARROW" MORE", menu_refer2),  
+  MENUITEM_BACK,
+  MENUITEM_END
+};
+
+static const menuitem_t menu_scale[] = {
+  MENUITEM_MENU("SCALE/DIV",     menu_dBper),
+  MENUITEM_FUNC("\2REF\0LEVEL",  menu_scale_cb),
+  MENUITEM_FUNC("ATTEN",         menu_scale_cb),
+  MENUITEM_MENU("AVERAGE",       menu_average),
+  MENUITEM_MENU("\2SPUR\0REDUCTION",menu_spur),
+  MENUITEM_MENU("RBW",           menu_rbw),
+  MENUITEM_BACK,
+  MENUITEM_END
+};
+
+static const menuitem_t menu_stimulus[] = {
+  MENUITEM_FUNC("START",            menu_stimulus_cb),
+  MENUITEM_FUNC("STOP",             menu_stimulus_cb),
+  MENUITEM_FUNC("CENTER",           menu_stimulus_cb),
+  MENUITEM_FUNC("SPAN",             menu_stimulus_cb),
+  MENUITEM_FUNC("CW FREQ",          menu_stimulus_cb),
+  MENUITEM_FUNC("\2PAUSE\0SWEEP",   menu_stimulus_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
+};
+
+static const menuitem_t menu_marker_sel[] = {
+  MENUITEM_FUNC("MARKER 1",     menu_marker_sel_cb),
+  MENUITEM_FUNC("MARKER 2",     menu_marker_sel_cb),
+  MENUITEM_FUNC("MARKER 3",     menu_marker_sel_cb),
+  MENUITEM_FUNC("MARKER 4",     menu_marker_sel_cb),
+  MENUITEM_FUNC("ALL OFF",      menu_marker_sel_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
+};
+
+static const menuitem_t menu_marker[] = {
+  MENUITEM_MENU("\2SELECT\0MARKER",     menu_marker_sel),
+  MENUITEM_FUNC(S_RARROW"START",        menu_marker_op_cb),
+  MENUITEM_FUNC(S_RARROW"STOP",         menu_marker_op_cb),
+  MENUITEM_FUNC(S_RARROW"CENTER",       menu_marker_op_cb),
+  MENUITEM_FUNC(S_RARROW"SPAN",         menu_marker_op_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
+};
+
+static const menuitem_t menu_dfu[] = {
+  MENUITEM_FUNC("ENTER DFU", menu_dfu_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
+};
+
+static const menuitem_t menu_output[] = {
+  MENUITEM_MENU("REFERENCE",    menu_refer),
+  MENUITEM_FUNC("GENERATOR",    menu_output_cb),
+  MENUITEM_BACK,
+  MENUITEM_END
+};
+
+
+static const menuitem_t menu_config[] = {
+  MENUITEM_FUNC("TOUCH CAL",    menu_config_cb),
+  MENUITEM_FUNC("TOUCH TEST",   menu_config_cb),
+  MENUITEM_FUNC("VERSION",      menu_config_cb),
+  MENUITEM_FUNC("\2ACTUAL\0POWER",menu_actualpower_cb),
+//  MENUITEM_MENU("RBW", menu_rbw),
+  MENUITEM_MENU(S_RARROW"DFU",  menu_dfu),
+  MENUITEM_BACK,
+  MENUITEM_END
+};
+
+static const menuitem_t menu_top[] = {
+  MENUITEM_FUNC("\2AUTO\0SETTINGS",  menu_autosettings_cb),
+  MENUITEM_MENU("SCAN",       menu_stimulus),
+  MENUITEM_MENU("DISPLAY",    menu_scale),
+  MENUITEM_MENU("STORAGE",    menu_storage),
+  MENUITEM_MENU("OUTPUT",     menu_output),
+  MENUITEM_MENU("CONFIG",     menu_config),
+  MENUITEM_END,
+ // MENUITEM_CLOSE,
+};
+
+// ===[MENU DEFINITION END]======================================================
 
 void
 show_logo(void)
@@ -122,12 +597,8 @@ static void menu_item_modify_attribute(
       *bg = 0x0000;
       *fg = 0xffff;
     }
-  } else if (menu == menu_transform) {
-      if ((item == 0 && (domain_mode & DOMAIN_MODE) == DOMAIN_TIME)
-       || (item == 1 && (domain_mode & TD_FUNC) == TD_FUNC_LOWPASS_IMPULSE)
-       || (item == 2 && (domain_mode & TD_FUNC) == TD_FUNC_LOWPASS_STEP)
-       || (item == 3 && (domain_mode & TD_FUNC) == TD_FUNC_BANDPASS)
-       ) {
+  } else if (menu == menu_output) {
+      if ((item == 1 && generator_enabled){
         *bg = 0x0000;
         *fg = 0xffff;
       }
@@ -189,4 +660,3 @@ static void fetch_numeric_target(void)
   }
   uistat.previous_value = uistat.value;
 }
-

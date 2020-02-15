@@ -66,9 +66,16 @@ enum {
   UI_NORMAL, UI_MENU, UI_NUMERIC, UI_KEYPAD
 };
 
+#ifdef __VNA__
 enum {
   KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_SCALE, KM_REFPOS, KM_EDELAY, KM_VELOCITY_FACTOR, KM_SCALEDELAY
 };
+#endif
+#ifdef __SA__
+enum {
+  KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_SCALE, KM_REFPOS, KM_ATTENUATION, KM_ACTUALPOWER, KM_SCALEDELAY
+};
+#endif
 
 static uint8_t ui_mode = UI_NORMAL;
 static uint8_t keypad_mode;
@@ -991,6 +998,7 @@ static void menu_scale_cb(int item)
   }
 }
 
+
 static void menu_stimulus_cb(int item)
 {
   int status;
@@ -1017,7 +1025,7 @@ static void menu_stimulus_cb(int item)
     break;
   }
 }
-
+#endif
 
 static int32_t get_marker_frequency(int marker)
 {
@@ -1111,7 +1119,7 @@ static void menu_marker_sel_cb(int item)
   redraw_marker(active_marker, TRUE);
   draw_menu();
 }
-#endif
+
 
 static void ensure_selection(void)
 {

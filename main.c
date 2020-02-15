@@ -1770,7 +1770,7 @@ static void cmd_trace(BaseSequentialStream *chp, int argc, char *argv[])
 {
   int t;
   if (argc == 0) {
-    for (t = 0; t < 4; t++) {
+    for (t = 0; t < TRACE_COUNT; t++) {
       if (trace[t].enabled) {
         const char *type = trace_info[trace[t].type].name;
         const char *channel = trc_channel_name[trace[t].channel];

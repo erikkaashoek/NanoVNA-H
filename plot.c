@@ -510,6 +510,7 @@ static void cartesian_scale(float re, float im, int *xp, int *yp, float scale)
 }
 #endif
 
+#ifdef __VNA__
 static uint32_t trace_into_index(
     int x, int t, int i, 
     float coeff[POINT_COUNT][2], 
@@ -524,7 +525,6 @@ static uint32_t trace_into_index(
   case TRC_LOGMAG:
     v = refpos - logmag(coeff[i]) * scale;
     break;
-#ifdef __VNA__
   case TRC_PHASE:
     v = refpos - phase(coeff[i]) * scale;
     break;
@@ -555,8 +555,25 @@ static uint32_t trace_into_index(
     cartesian_scale(coeff[i][0], coeff[i][1], &x, &y, scale);
     return INDEX(x +CELLOFFSETX, y, i);
     break;
-#endif
   }
+  if (v < 0) v = 0;
+  if (v > 8) v = 8;
+  y = (int)(v * GRIDY);
+  return INDEX(x +CELLOFFSETX, y, i);
+}
+#endif
+
+static uint32_t trace_into_index(
+    int x, int t, int i,
+    float coeff[POINT_COUNT],
+    uint32_t freq[POINT_COUNT],
+    int point_count)
+{
+  int y = 0;
+  float v = 0;
+  float refpos = 8 - get_trace_refpos(t);
+  float scale = 1 / get_trace_scale(t);
+  v = refpos - log10f(coeff[i]) * 10 * scale;
   if (v < 0) v = 0;
   if (v > 8) v = 8;
   y = (int)(v * GRIDY);
@@ -658,6 +675,7 @@ static void gamma2reactance(char *buf, int len, const float coeff[2])
 }
 #endif
 
+#ifdef __VNA__
 static void trace_get_value_string(
     int t, char *buf, int len,
     int i, float coeff[POINT_COUNT][2], 
@@ -673,7 +691,6 @@ static void trace_get_value_string(
     else
       chsnprintf(buf, len, "%.2fdB", v);
     break;
-#ifdef __VNA__
   case TRC_PHASE:
     v = phase(coeff[i]);
     chsnprintf(buf, len, "%.3f" S_DEGREE, v);
@@ -709,9 +726,25 @@ static void trace_get_value_string(
   case TRC_POLAR:
     chsnprintf(buf, len, "%.3f %.3fj", coeff[i][0], coeff[i][1]);
     break;
-#endif
     }
 }
+#endif
+
+#ifdef __SA__
+static void trace_get_value_string(
+    int t, char *buf, int len,
+    int i, float coeff[POINT_COUNT],
+    uint32_t freq[POINT_COUNT],
+    int point_count)
+{
+  float v;
+    v = log10f(coeff[i]) * 10;
+    if (v == -INFINITY)
+      chsnprintf(buf, len, "-INF dB");
+    else
+      chsnprintf(buf, len, "%.2fdB", v);
+}
+#endif
 
 void trace_get_info(int t, char *buf, int len)
 {
@@ -827,7 +860,7 @@ static void mark_cells_from_index(void)
   }
 }
 
-void plot_into_index(float measured[2][POINT_COUNT][2])
+void plot_into_index(measurement_t measured)
 {
   int i, t;
   for (i = 0; i < sweep_points; i++) {
