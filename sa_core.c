@@ -1,222 +1,52 @@
 
+int SI4432_Sel = 0;
+
 //------------PE4302 -----------------------------------------------
 
 // Comment out this define to use parallel mode PE4302
-#define PE4302_serial
 
-#ifdef PE4302_serial
-// Clock and data pints are shared with SI4432
-// Serial mode LE pin
 #define PE4302_en 10
-#else
-//Parallel mode bit 0 pin number, according below line the PE4302 is connected to lines A0,A1,A2,A3,A4,A5
-#define PE4302_pinbase A0
-#endif
 
 void PE4302_init() {
-#ifdef PE4302_serial
-  pinMode(PE4302_en, OUTPUT);
-  digitalWrite(PE4302_en, LOW);
-#else
-  for (int i=0; i<6; i++) pinMode(i+PE4302_pinbase, OUTPUT);          // Setup attenuator at D6 - D11
-#endif
+//  pinMode(PE4302_en, OUTPUT);
+//  digitalWrite(PE4302_en, LOW);
 }
 
-void PE4302_Write_Byte(byte DATA )
+void PE4302_Write_Byte(unsigned char DATA )
 {
-#ifdef PE4302_serial
   //Serial mode output
-  digitalWrite(SI_SCLK, LOW);
-  shiftOut(SI_SDI , SI_SCLK , MSBFIRST , DATA );
-  digitalWrite(PE4302_en, HIGH);
-  digitalWrite(PE4302_en, LOW);
-#else
-  // Parallel mode output
-  for (int i=0; i<6;i++) {
-    digitalWrite(i+PE4302_pinbase, p & (1<<i));
-  }
-#endif
+//  digitalWrite(SI_SCLK, LOW);
+//  shiftOut(SI_SDI , SI_SCLK , MSBFIRST , DATA );
+//  digitalWrite(PE4302_en, HIGH);
+//  digitalWrite(PE4302_en, LOW);
 }
 
 // ---------------------------------------------------
 
-#define MAX_VFO 3
-long lFreq[MAX_VFO] = { 0,100000000,433700000};
-int dataIndex = 0;
+//-----------------SI4432 dummy------------------
+void SI4432_Write_Byte(unsigned char ADR, unsigned char DATA ) {}
+float SI4432_SET_RBW(float WISH) {return WISH;}
+void SI4432_SetPowerReference(int p) {}
+void SI4432_Set_Frequency(long f) {}
 
+unsigned long seed = 123456789;
 
+double myfrand()
+{
+  seed = (unsigned int) (1103515245 * seed + 12345) ;
+  return ((double) seed) / 1000000000.0;
+}
+#define NOISE  (myfrand() * 0.001)
+double SI4432_RSSI(int i)
+{
+  if (frequencies[i] > 10000000 && frequencies[i] < 11000000)
+    return(1.0 + NOISE);
+  return 0.00001 + NOISE;
+}
+void SI4432_Init(void) {}
 //--------------------- Frequency control -----------------------
 
 int dirty = true;
-
-#define STOP_MAX 430000000
-#define START_MIN 0
-
-int32_t frequency0 = 0;
-int32_t frequency1 = 100000000;
-
-static void update_frequencies(void)
-{
-  //  chMtxLock(&mutex_sweep);
-  uint32_t start, stop;
-  if (frequency1 > 0) {
-    start = frequency0;
-    stop = frequency1;
-  } else {
-    int32_t center = frequency0;
-    int32_t span = -frequency1;
-    start = center - span/2;
-    stop = center + span/2;
-  }
-  lFreq[0] = start;
-  lFreq[1] = stop;
-  //  set_frequencies(start, stop, sweep_points);
-  //  operation_requested = OP_FREQCHANGE;
-
-  //  update_marker_index();
-
-  // set grid layout
-  //  update_grid();
-  //  chMtxUnlock(&mutex_sweep);
-}
-
-static void freq_mode_startstop(void)
-{
-  if (frequency1 <= 0) {
-    int center = frequency0;
-    int span = -frequency1;
-    //   ensure_edit_config();
-    frequency0 = center - span/2;
-    frequency1 = center + span/2;
-  }
-}
-
-static void freq_mode_centerspan(void)
-{
-  if (frequency1 > 0) {
-    int start = frequency0;
-    int stop = frequency1;
-    //    ensure_edit_config();
-    frequency0 = (start + stop)/2; // center
-    frequency1 = -(stop - start); // span
-  }
-}
-
-
-void set_sweep_frequency(int type, int32_t freq)
-{
-  //  chMtxLock(&mutex_sweep);
-  int32_t center;
-  int32_t span;
-  //  int cal_applied = cal_status & CALSTAT_APPLY;
-  dirty = true;
-  switch (type) {
-  case ST_START:
-    //    ensure_edit_config();
-    freq_mode_startstop();
-    if (freq < START_MIN)
-      freq = START_MIN;
-    if (freq > STOP_MAX)
-      freq = STOP_MAX;
-    frequency0 = freq;
-    // if start > stop then make start = stop
-    if (frequency1 < freq)
-      frequency1 = freq;
-    update_frequencies();
-    break;
-  case ST_STOP:
-    //    ensure_edit_config();
-    freq_mode_startstop();
-    if (freq > STOP_MAX)
-      freq = STOP_MAX;
-    if (freq < START_MIN)
-      freq = START_MIN;
-    frequency1 = freq;
-    // if start > stop then make start = stop
-    if (frequency0 > freq)
-      frequency0 = freq;
-    update_frequencies();
-    break;
-  case ST_CENTER:
-    //    ensure_edit_config();
-    freq_mode_centerspan();
-    if (freq > STOP_MAX)
-      freq = STOP_MAX;
-    if (freq < START_MIN)
-      freq = START_MIN;
-    frequency0 = freq;
-    center = frequency0;
-    span = -frequency1;
-    if (center-span/2 < START_MIN) {
-      span = (center - START_MIN) * 2;
-      frequency1 = -span;
-    }
-    if (center+span/2 > STOP_MAX) {
-      span = (STOP_MAX - center) * 2;
-      frequency1 = -span;
-    }
-    update_frequencies();
-    break;
-  case ST_SPAN:
-    //   ensure_edit_config();
-    freq_mode_centerspan();
-    if (freq > STOP_MAX-START_MIN)
-      freq = STOP_MAX-START_MIN;
-    if (freq < 0)
-      freq = 0;
-    frequency1 = -freq;
-    center = frequency0;
-    span = -frequency1;
-    if (center-span/2 < START_MIN) {
-      center = START_MIN + span/2;
-      frequency0 = center;
-    }
-    if (center+span/2 > STOP_MAX) {
-      center = STOP_MAX - span/2;
-      frequency0 = center;
-    }
-    update_frequencies();
-    break;
-  case ST_CW:
-    //    ensure_edit_config();
-    freq_mode_centerspan();
-    if (freq > STOP_MAX)
-      freq = STOP_MAX;
-    if (freq < START_MIN)
-      freq = START_MIN;
-    frequency0 = freq;
-    frequency1 = 0;
-    update_frequencies();
-    break;
-  }
-
-  //  if (cal_auto_interpolate && cal_applied)
-  //    cal_interpolate(lastsaveid);
-  //  chMtxUnlock(&mutex_sweep);
-}
-
-uint32_t get_sweep_frequency(int type)
-{
-  if (frequency1 >= 0) {
-    switch (type) {
-    case ST_START: return frequency0;
-    case ST_STOP: return frequency1;
-    case ST_CENTER: return (frequency0 + frequency1)/2;
-    case ST_SPAN: return frequency1 - frequency0;
-    case ST_CW: return (frequency0 + frequency1)/2;
-    }
-  } else {
-    switch (type) {
-    case ST_START: return frequency0 + frequency1/2;
-    case ST_STOP: return frequency0 - frequency1/2;
-    case ST_CENTER: return frequency0;
-    case ST_SPAN: return -frequency1;
-    case ST_CW: return frequency0;
-    }
-  }
-  return 0;
-}
-
 
 //---------------- menu system -----------------------
 
@@ -232,6 +62,7 @@ int settingSpur = 0;
 int settingAverage = 0;
 int settingShowStorage = 0;
 int settingSubtractStorage = 0;
+
 
 void set_refer_output(int v)
 {
@@ -267,15 +98,17 @@ void SetAttenuation(int a)
 
 void SetStorage(void)
 {
-  for (int i=0; i<DISPLAY_POINTS;i++)
-    myStorage[i] = myData[i];
+  for (int i=0; i<POINT_COUNT;i++)
+    stored_t[i] = actual_t[i];
   settingShowStorage = true;
+  trace[TRACE_STORED].enabled = true;
 }
 
 void SetClearStorage(void)
 {
   settingShowStorage = false;
   settingSubtractStorage = false;
+  trace[TRACE_STORED].enabled = false;
 }
 
 void SetSubtractStorage(void)
@@ -310,6 +143,7 @@ void SetSpur(int v)
 void SetAverage(int v)
 {
   settingAverage = v;
+  trace[TRACE_TEMP].enabled = (v != 0);
   dirty = true;
 }
 
@@ -317,15 +151,18 @@ void SetAverage(int v)
 //------------------------------------------
 
 
-int debug = 0;
+int peakLevel;
+double peakFreq;
+int peakIndex;
+
+#define BARSTART  24
 
 
-#define DebugLine(X) { if (debug) Serial.println(X); }
-#define Debug(X) { if (debug) Serial.print(X); }
+static float ownrbw = 0;
+static float vbw = 0;
 
 
 int inData = 0;
-long steps = DISPLAY_POINTS;
 unsigned long  startFreq = 250000000;
 unsigned long  stopFreq = 300000000;
 unsigned long  lastFreq[6] = { 300000000, 300000000,0,0,0,0};
@@ -349,18 +186,7 @@ int hardware = 0;
 
 
 
-int peakLevel;
-double peakFreq;
-int peakIndex;
-
-#define BARSTART  24
-
-
-static int ownrbw = 0;
-static int vbw = 0;
-
-char *averageText[] = { "OFF", "MIN", "MAX", "2", "4", "8"};
-
+#if 0
 void displayHisto ()
 {
   //  clearDisplay();
@@ -470,11 +296,11 @@ void displayHisto ()
   for (int i=0; i<DISPLAY_POINTS - 1; i++) {
     int delta=settingMax - settingMin;
     DrawCheckerBoard(i);
-    double f = ((myData[i] / 2.0  - settingAttenuate) - 120.0) + settingLevelOffset;
+    double f = ((actual_t[i] / 2.0  - settingAttenuate) - 120.0) + settingLevelOffset;
     f = (f - settingMin) * Y_GRID * dY / delta;
     if (f >= Y_GRID * dY) f = Y_GRID * dY-1;
     if (f < 0) f = 0;
-    double f2 = ((myData[i+1] / 2.0  - settingAttenuate) - 120.0) + settingLevelOffset;
+    double f2 = ((actual_t[i+1] / 2.0  - settingAttenuate) - 120.0) + settingLevelOffset;
     f2 = (f2 - settingMin) * Y_GRID * dY / delta;
     if (f2 >= Y_GRID * dY) f2 = Y_GRID * dY-1;
     if (f2 < 0) f2 = 0;
@@ -515,7 +341,7 @@ void DisplayPoint(unsigned char *data, int i, int color)
 
 void DisplayPeakData(void)
 {
-  double f = ((((float)myData[peakIndex]) / 2.0  - settingAttenuate) - 120.0) + settingLevelOffset;
+  double f = ((((float)actual_t[peakIndex]) / 2.0  - settingAttenuate) - 120.0) + settingLevelOffset;
   int delta=settingMax - settingMin;
   f = (f - settingMin) * Y_GRID * dY / delta;
   if (f >= Y_GRID * dY) f = Y_GRID * dY-1;
@@ -533,7 +359,7 @@ void DisplayPeakData(void)
 
 #endif
 
-void setup() 
+void setupSA() 
 {
   SI4432_Init();
   PE4302_init();
@@ -611,25 +437,22 @@ long autoSweepFreqStep = 0;
 int standalone = true;
 
 
-void perform()
+void perform(int i)
 {
-  if (autoSweepStep == 0) {
+  if (i == 0) {
     ownrbw = settingBandwidth;
     if (ownrbw == 0)
-      ownrbw = 1.2*((float)(lFreq[1] - lFreq[0]))/DISPLAY_POINTS/1000.0;
+      ownrbw = 1.2*((float)(frequencies[1] - frequencies[0]))/1000.0;
 
     if (ownrbw < 2.6)
       ownrbw = 2.6;
-    autoSweepFreq = lFreq[0];
-    autoSweepFreqStep = (lFreq[1] - lFreq[0])/DISPLAY_POINTS;
+    autoSweepFreq = frequencies[0];
+    autoSweepFreqStep = (frequencies[1] - frequencies[0])/POINT_COUNT;
     vbw = autoSweepFreqStep/1000.0;
-    setFreq (0, lFreq[2]);
-    lastFreq[0] = lFreq[2];
-    startFreq = lFreq[0] + lFreq[2];
-    stopFreq = lFreq[1] + lFreq[2];
+    setFreq (0, frequency_IF);
     int p = - settingAttenuate * 2;
     PE4302_Write_Byte(p);
-    SetPowerReference(settingPowerCal);
+    SI4432_SetPowerReference(settingPowerCal);
     SI4432_Sel = 0;
     ownrbw = SI4432_SET_RBW(ownrbw);
     SI4432_Sel = 1;
@@ -638,14 +461,14 @@ void perform()
     peakLevel = -150;
     peakFreq = -1.0;
     SI4432_Sel=1;
-    setFreq (1, lFreq[2] + autoSweepFreq + (long)(ownrbw < 300.0?settingSpur * ownrbw:0));
+    setFreq (1, frequency_IF + autoSweepFreq + (long)(ownrbw < 300.0?settingSpur * ownrbw:0));
   }
-  if (autoSweepFreqStep >0 && autoSweepStep > 0) {
+  if (autoSweepFreqStep >0 && i > 0) {
     SI4432_Sel=1;
-    setFreq (1, lFreq[2] + autoSweepFreq + (long)(ownrbw < 300.0?settingSpur * ownrbw:0));
+    setFreq (1, frequency_IF + frequencies[i] + (long)(ownrbw < 300.0?settingSpur * ownrbw:0));
   }
   SI4432_Sel=0;
-  int RSSI = SI4432_RSSI();
+  double RSSI = SI4432_RSSI(i);
   if (vbw > ownrbw) {
     int subSteps = ((int)(1.5 * vbw / ownrbw)) - 1;
 
@@ -653,54 +476,49 @@ void perform()
       //Serial.print("substeps = ");
       //Serial.println(subSteps);
       SI4432_Sel=1;
-      setFreq (1, lFreq[2] + autoSweepFreq + subSteps * ownrbw * 1000 + (long)(ownrbw < 300.0?settingSpur * ownrbw * 1000:0));
-      //Serial.print("Freq = ");
-      //Serial.println(lFreq[2] + autoSweepFreq + subSteps * ownrbw * 1000 + (long)(ownrbw < 300.0?settingSpur * ownrbw * 1000:0));
-      SI4432_Sel=0;
-      int subRSSI = SI4432_RSSI();
+      setFreq (1, frequency_IF + frequencies[i] + subSteps * ownrbw * 1000 + (long)(ownrbw < 300.0?settingSpur * ownrbw * 1000:0));
+       SI4432_Sel=0;
+      double subRSSI = SI4432_RSSI(i);
       if (RSSI < subRSSI)
         RSSI = subRSSI;
       subSteps--;
     }
   }
-  if (settingShowStorage)
-    if (settingSubtractStorage)
-      RSSI = 128 + RSSI - myStorage[autoSweepStep] ;
+  temp_t[i] = RSSI;
+  if (settingShowStorage) {
+    if (settingSubtractStorage) {
+      RSSI = RSSI - stored_t[i] ;
+    }
+  }
   if (dirty || settingAverage == AV_OFF)
-    myData[autoSweepStep] = (unsigned char) RSSI;
+    actual_t[i] = RSSI;
   else {
     switch(settingAverage) {
-    case AV_MIN: if (myData[autoSweepStep] > (unsigned char) RSSI) myData[autoSweepStep] = (unsigned char) RSSI; break;
-    case AV_MAX: if (myData[autoSweepStep] < (unsigned char) RSSI) myData[autoSweepStep] = (unsigned char) RSSI; break;
-    case AV_2: myData[autoSweepStep] = (myData[autoSweepStep] + RSSI) / 2; break;
-    case AV_4: myData[autoSweepStep] = (myData[autoSweepStep]*3 + RSSI) / 4; break;
-    case AV_8: myData[autoSweepStep] = (myData[autoSweepStep]*7 + RSSI) / 8; break;
+    case AV_MIN: if (actual_t[i] > RSSI) actual_t[i] = RSSI; break;
+    case AV_MAX: if (actual_t[i] < RSSI) actual_t[i] = RSSI; break;
+    case AV_2: actual_t[i] = (actual_t[i] + RSSI) / 2.0; break;
+    case AV_4: actual_t[i] = (actual_t[i]*3 + RSSI) / 4.0; break;
+    case AV_8: actual_t[i] = (actual_t[i]*7 + RSSI) / 8.0; break;
     }
-    myActual[autoSweepStep] = RSSI;
   }
   if (autoSweepFreq > 1000000) {
-    if (peakLevel < myData[autoSweepStep]) {
-      peakIndex = autoSweepStep;
-      peakLevel = myData[autoSweepStep];
+    if (peakLevel < actual_t[i]) {
+      peakIndex = i;
+      peakLevel = actual_t[i];
       peakFreq = autoSweepFreq;
     }
   }
-  if (myData[autoSweepStep] == 0) {
+  if (actual_t[i] == 0) {
     SI4432_Init();
   }
-  if (!settingGenerate || autoSweepStep == 0) {
-    autoSweepStep++;
-    autoSweepFreq += (lFreq[1] - lFreq[0])/DISPLAY_POINTS;
-  }
-  if (autoSweepStep >= DISPLAY_POINTS) {
+  if (i = POINT_COUNT -1) {
     if (settingAverage && dirty)
       dirty = false;
-    autoSweepStep = 0;
     settingSpur = -settingSpur;
   }
 }
 
-
+#if 0
 void int WriteReadRegister() {
   if(inData == 'X' || inData == 'x')
   {
@@ -741,3 +559,4 @@ void int WriteReadRegister() {
     inData = 0;
   }
 }
+#endif

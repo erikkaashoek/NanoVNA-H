@@ -24,10 +24,11 @@ void AllDirty(void);
 void MenuDirty(void);
 void redrawHisto(void);
 
-enum {
-  AV_OFF, AV_MIN, AV_MAX, AV_2, AV_4, AV_8
-};
+char *averageText[] = { "OFF", "MIN", "MAX", "2", "4", "8"};
 
+void draw_cal_status(void)
+{
+}
 
 // ===[MENU CALLBACKS]=========================================================
 

@@ -733,7 +733,7 @@ properties_t current_props = {
 #ifdef __SA__
     { 1, TRC_LOGMAG, 0, 0, 1.0, 7.0 },  //Actual
     { 0, TRC_LOGMAG, 1, 0, 1.0, 7.0 },  //Stored
-    { 0, TRC_LOGMAG,  2, 1, 1.0, 0.0 }   //Processed
+    { 0, TRC_LOGMAG, 2, 0, 1.0, 7.0 }   //Processed
 #endif
   },
   ._markers = /*[4] */ {
@@ -761,6 +761,8 @@ static void ensure_edit_config(void)
 #endif
 }
 
+#include "sa_core.c"
+
 // main loop for measurement
 static bool sweep(bool break_on_operation)
 {
@@ -768,11 +770,11 @@ static bool sweep(bool break_on_operation)
   pll_lock_failed = false;
 #endif
   for (int i = 0; i < sweep_points; i++) {
+#ifdef __VNA__
         int delay = set_frequency(frequencies[i]);
         delay = delay < 3 ? 3 : delay;
         delay = delay > 8 ? 8 : delay;
     
-#ifdef __VNA__
         tlv320aic3204_select(0); // CH0:REFLECT
         wait_dsp(delay);
 
@@ -791,7 +793,9 @@ static bool sweep(bool break_on_operation)
         if (electrical_delay != 0)
             apply_edelay_at(i);
 #endif
-
+#ifdef __SA__
+        perform(i);
+#endif
         // back to toplevel to handle ui operation
         if (operation_requested && break_on_operation)
             return false;

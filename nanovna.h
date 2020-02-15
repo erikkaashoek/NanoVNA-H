@@ -46,6 +46,12 @@
 #endif
 #ifdef __SA__
 #define TRACE_COUNT     3
+#define TRACE_ACTUAL    0
+#define TRACE_STORED    1
+#define TRACE_TEMP      2
+#define stored_t  measured[TRACE_STORED]
+#define actual_t  measured[TRACE_ACTUAL]
+#define temp_t    measured[TRACE_TEMP]
 #endif
 //#else
 //#define TRACE_COUNT     2
@@ -111,11 +117,10 @@ enum {
 
 void set_sweep_frequency(int type, int32_t frequency);
 uint32_t get_sweep_frequency(int type);
-
 void toggle_sweep(void);
 
 extern int8_t sweep_enabled;
-
+extern void perform(int i);
 /*
  * ui.c
  */
@@ -128,6 +133,10 @@ static int32_t get_marker_frequency(int);
 static int btn_wait_release(void);
 enum { OP_NONE = 0, OP_LEVER, OP_TOUCH, OP_FREQCHANGE };
 extern uint8_t operation_requested;
+enum {
+  AV_OFF, AV_MIN, AV_MAX, AV_2, AV_4, AV_8
+};
+
 
 #ifdef __VNA__
 /*
@@ -368,6 +377,9 @@ typedef struct {
   uint16_t _cal_status;
 
 #endif
+#ifdef __SA__
+  uint32_t _frequency_IF; //IF frequency
+#endif
   uint32_t _frequencies[POINT_COUNT];
 #ifdef __VNA__
   float _cal_data[5][POINT_COUNT][2];
@@ -400,6 +412,9 @@ extern int8_t previous_marker;
 #define sweep_points current_props._sweep_points
 #ifdef __VNA__
 #define cal_status current_props._cal_status
+#endif
+#ifdef __SA__
+#define frequency_IF current_props._frequency_IF
 #endif
 #define frequencies current_props._frequencies
 #ifdef __VNA__
