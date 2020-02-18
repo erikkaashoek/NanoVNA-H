@@ -49,12 +49,12 @@ float LEVEL(int i, uint32_t f, int v)
     dv = df/(rbw*1000);
   else
     dv =  1 + 50*(df - rbw*1000)/(rbw*1000);
-  return (v - dv);
+  return (v - dv - settingAttenuate);
 }
 
 double SI4432_RSSI(int i)
 {
-  double v = -90 + NOISE;
+  double v = -100 + log10(rbw)*10 + NOISE;
   v = fmax(LEVEL(i,10000000,-20),v);
   v = fmax(LEVEL(i,20000000,-40),v);
   v = fmax(LEVEL(i,30000000,-30),v);
@@ -120,7 +120,7 @@ void SetMode(int m)
 
 void SetAttenuation(int a)
 {
-  settingAttenuate = -a;
+  settingAttenuate = a;
   dirty = true;
 }
 
@@ -476,7 +476,7 @@ void perform(int i)
       redraw_request != REDRAW_CAL_STATUS;
 #endif
     setFreq (0, local_IF);
-    int p = - settingAttenuate * 2;
+    int p = settingAttenuate * 2;
     PE4302_Write_Byte(p);
     SI4432_Sel = (settingMode & 1);
     SetRX(settingMode);
@@ -495,7 +495,7 @@ void perform(int i)
     setFreq (1, local_IF + frequencies[i] + (long)(rbw < 300.0?settingSpur * rbw:0));
   }
   SI4432_Sel=(settingMode & 1);
-  double RSSI = SI4432_RSSI(i)+settingLevelOffset-settingAttenuate;
+  double RSSI = SI4432_RSSI(i)+settingLevelOffset+settingAttenuate;
   if (vbw > rbw) {
     int subSteps = ((int)(1.5 * vbw / rbw)) - 1;
 
@@ -505,7 +505,7 @@ void perform(int i)
       SI4432_Sel=1;
       setFreq (1, local_IF + frequencies[i] + subSteps * rbw * 1000 + (long)(rbw < 300.0?settingSpur * rbw * 1000:0));
       SI4432_Sel=(settingMode & 1);
-      double subRSSI = SI4432_RSSI(i)+settingLevelOffset-settingAttenuate;
+      double subRSSI = SI4432_RSSI(i)+settingLevelOffset+settingAttenuate;
       if (RSSI < subRSSI)
         RSSI = subRSSI;
       subSteps--;
@@ -614,6 +614,7 @@ void draw_cal_status(void)
 
   int yMax = (YGRIDS - get_trace_refpos(0)) * get_trace_scale(0);
   chsnprintf(buf, BLEN, "%ddB", yMax);
+  buf[5]=0;
   ili9341_drawstring_5x7(buf, x, y, 0xffff, 0x0000);
 
   y += YSTEP*2;
@@ -624,7 +625,8 @@ void draw_cal_status(void)
   ili9341_drawstring_5x7("Attn", x, y, 0xffff, 0x0000);
 
   y += YSTEP;
-  chsnprintf(buf, BLEN, "%ddB", settingAttenuate);
+  chsnprintf(buf, BLEN, "-%ddB", settingAttenuate);
+  buf[5]=0;
   ili9341_drawstring_5x7(buf, x, y, 0xffff, 0x0000);
 
   y += YSTEP*2;
@@ -632,6 +634,7 @@ void draw_cal_status(void)
 
   y += YSTEP;
   chsnprintf(buf, BLEN, "%dkHz", (int)rbw);
+  buf[5]=0;
   ili9341_drawstring_5x7(buf, x, y, 0xffff, 0x0000);
 
   y += YSTEP*2;
@@ -639,9 +642,11 @@ void draw_cal_status(void)
 
   y += YSTEP;
   chsnprintf(buf, BLEN, "%dkHz",(int)vbw);
+  buf[5]=0;
   ili9341_drawstring_5x7(buf, x, y, 0xffff, 0x0000);
 
   y = HEIGHT-7 + OFFSETY;
   chsnprintf(buf, BLEN, "%ddB", (int)(yMax - get_trace_scale(0) * YGRIDS));
+  buf[5]=0;
   ili9341_drawstring_5x7(buf, x, y, 0xffff, 0x0000);
 }

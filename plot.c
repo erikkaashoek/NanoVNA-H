@@ -745,11 +745,13 @@ static void trace_get_value_string(
     int point_count)
 {
   float v;
+  char buf2[10];
+  frequency_string(buf2, sizeof buf2, frequencies[i]);
     v = logmag(&coeff[i]);
     if (v == -INFINITY)
       chsnprintf(buf, len, "-INF dB");
     else
-      chsnprintf(buf, len, "%.2fdB", v);
+      chsnprintf(buf, len, "%.2fdB %s", v, buf2);
 }
 #endif
 

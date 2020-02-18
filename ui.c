@@ -73,7 +73,7 @@ enum {
 #endif
 #ifdef __SA__
 enum {
-  KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_SCALE, KM_REFPOS, KM_ATTENUATION, KM_ACTUALPOWER, KM_SCALEDELAY
+  KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_REFPOS, KM_SCALE, KM_ATTENUATION, KM_ACTUALPOWER, KM_SCALEDELAY
 };
 #endif
 
@@ -1306,8 +1306,8 @@ static const keypads_t * const keypads_mode_tbl[] = {
   keypads_freq, // center
   keypads_freq, // span
   keypads_freq, // cw freq
-  keypads_scale, // scale
 #ifdef __VNA__
+  keypads_scale, // scale
   keypads_scale, // refpos
   keypads_time, // electrical delay
   keypads_scale, // velocity factor
@@ -1315,6 +1315,7 @@ static const keypads_t * const keypads_mode_tbl[] = {
 #endif
 #ifdef __SA__
   keypads_level, // refpos
+  keypads_scale, // scale
   keypads_scale, // attenuation
   keypads_level, // actual power
 #endif
@@ -1327,7 +1328,7 @@ static const char * const keypad_mode_label[] = {
 #endif
 #ifdef __SA__
 static const char * const keypad_mode_label[] = {
-  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "ATTENUATION", "ACTUALPOWER"
+  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "REFPOS", "SCALE", "ATTENUATION", "ACTUALPOWER"
 };
 #endif
 

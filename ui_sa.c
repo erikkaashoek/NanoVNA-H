@@ -290,7 +290,7 @@ static void choose_active_marker(void)
 static void menu_scale_cb(int item)
 {
   int status;
-  int km = KM_SCALE + item;
+  int km = KM_REFPOS + item;
 //  if (km == KM_SCALE && trace[uistat.current_trace].type == TRC_DELAY) {
 //    km = KM_SCALEDELAY;
 //  }
@@ -457,8 +457,8 @@ static const menuitem_t menu_refer[] = {
 };
 
 static const menuitem_t menu_scale[] = {
-  MENUITEM_MENU("SCALE/DIV",     menu_dBper),
   MENUITEM_FUNC("\2REF\0LEVEL",  menu_scale_cb),
+  MENUITEM_MENU("SCALE/DIV",     menu_dBper),
   MENUITEM_FUNC("ATTEN",         menu_scale_cb),
   MENUITEM_MENU("AVERAGE",       menu_average),
   MENUITEM_MENU("\2SPUR\0REDUCTION",menu_spur),
