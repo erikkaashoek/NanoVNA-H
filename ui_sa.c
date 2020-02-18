@@ -46,25 +46,28 @@ static void menu_mode_cb(int item)
 extern int dirty;
 static void menu_autosettings_cb(int item)
 {
-    set_sweep_frequency(ST_START, (int32_t) 0);
-    set_sweep_frequency(ST_STOP, (int32_t) 300000000);
-    int value = -10; // Top at -10dB
-    set_trace_refpos(0, - value / get_trace_scale(0) + YGRIDS);
-    set_trace_refpos(1, - value / get_trace_scale(0) + YGRIDS);
-    set_trace_refpos(2, - value / get_trace_scale(0) + YGRIDS);
-    value = 10; // 10dB/
-    set_trace_scale(0, value);
-    set_trace_scale(1, value);
-    set_trace_scale(2, value);
+  SetRBW(0);
+  SetMode(M_LOW);
+//  set_sweep_frequency(ST_START, (int32_t) 0);
+//  set_sweep_frequency(ST_STOP, (int32_t) 300000000);
 
-    set_refer_output(1);
-    SetMode(M_LOW);
-    SetAttenuation(0);
-    SetPowerLevel(100); // Reset
-    SetRBW(0);
-    dirty = true;
+  int value = 10; // 10dB/
+  set_trace_scale(0, value);
+  set_trace_scale(1, value);
+  set_trace_scale(2, value);
+
+  value = -10; // Top at -10dB
+  set_trace_refpos(0, - value / get_trace_scale(0) + YGRIDS);
+  set_trace_refpos(1, - value / get_trace_scale(0) + YGRIDS);
+  set_trace_refpos(2, - value / get_trace_scale(0) + YGRIDS);
+
+  set_refer_output(1);
+  SetAttenuation(0);
+  SetPowerLevel(100); // Reset
+  dirty = true;
   menu_move_back();
   ui_mode_normal();
+  draw_cal_status();
 }
 
 
