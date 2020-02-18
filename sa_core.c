@@ -25,55 +25,67 @@ void PE4302_Write_Byte(unsigned char DATA )
 
 //-----------------SI4432 dummy------------------
 void SI4432_Write_Byte(unsigned char ADR, unsigned char DATA ) {}
-float SI4432_SET_RBW(float WISH) {return WISH;}
+float SI4432_SET_RBW(float WISH) {return (WISH > 600.0?600: (WISH<3.0?3:WISH));}
 void SI4432_SetPowerReference(int p) {}
 void SI4432_Set_Frequency(long f) {}
 
 unsigned long seed = 123456789;
-
-double myfrand()
+extern float rbw;
+float myfrand()
 {
   seed = (unsigned int) (1103515245 * seed + 12345) ;
-  return ((double) seed) / 1000000000.0;
+  return ((float) seed) / 1000000000.0;
 }
-#define NOISE  (myfrand() * 0.001)
+#define NOISE  ((myfrand()-2) * 2)  // +/- 4 dBm noise
+extern int settingAttenuate;
+
+//#define LEVEL(i, f, v) (v * (1-(fabs(f - frequencies[i])/rbw/1000)))
+
+float LEVEL(int i, uint32_t f, int v)
+{
+  float dv;
+  float df = fabs((float)f - (float)frequencies[i]);
+  if (df < rbw*1000)
+    dv = df/(rbw*1000);
+  else
+    dv =  1 + 50*(df - rbw*1000)/(rbw*1000);
+  return (v - dv);
+}
+
 double SI4432_RSSI(int i)
 {
-  if (frequencies[i] > 10000000 && frequencies[i] < 11000000)
-    return(1.0 + NOISE);
-  return 0.00001 + NOISE;
+  double v = -90 + NOISE;
+  v = fmax(LEVEL(i,10000000,-20),v);
+  v = fmax(LEVEL(i,20000000,-40),v);
+  v = fmax(LEVEL(i,30000000,-30),v);
+  v = fmax(LEVEL(i,40000000,-90),v);
 }
 void SI4432_Init(void) {}
 //--------------------- Frequency control -----------------------
 
 int dirty = true;
+int scandirty = true;
 
 //---------------- menu system -----------------------
 
-int settingMax = -10; //9 drids vertical
-int settingMin = -100;
 int settingAttenuate = 0;
 int settingGenerate = 0;
 int settingBandwidth = 0;
 int settingLevelOffset = 0;
 int settingPowerCal = 1;
-int settingPowerGrid = 10;
 int settingSpur = 0;
 int settingAverage = 0;
 int settingShowStorage = 0;
 int settingSubtractStorage = 0;
+int settingMode = 0;
+int settingDrive=2; // 0-3 , 3=+20dBm
 
+uint32_t minFreq = 0;
+uint32_t maxFreq = 350000000;
 
 void set_refer_output(int v)
 {
   settingPowerCal = v;
-  dirty = true;
-}
-
-void SetRefLevel(int ref)
-{
-  settingMin = ref - (settingMax - settingMin);
-  settingMax =ref;
   dirty = true;
 }
 
@@ -83,12 +95,28 @@ void SetGenerate(int g)
   dirty = true;
 }
 
-void SetPowerGrid(int g)
+void SetMode(int m)
 {
-  settingPowerGrid = g;
-  settingMin = settingMax - 9*g;
+  settingMode = m;
+  switch(m) {
+  case M_LOW:
+  case M_GEN:
+    minFreq = 0;
+    maxFreq = 350000000;
+    set_sweep_frequency(ST_START, (int32_t) 0);
+    set_sweep_frequency(ST_STOP, (int32_t) 300000000);
+
+    break;
+  case M_HIGH:
+    minFreq = 260000000;
+    maxFreq = 960000000;
+    set_sweep_frequency(ST_START, (int32_t) 300000000);
+    set_sweep_frequency(ST_STOP, (int32_t) 960000000);
+    break;
+  }
   dirty = true;
 }
+
 
 void SetAttenuation(int a)
 {
@@ -116,13 +144,14 @@ void SetSubtractStorage(void)
   if (!settingShowStorage)
     SetStorage();
   settingSubtractStorage = true;
+  dirty = true;
 }
 
-extern int peakLevel;
+extern double peakLevel;
 void SetPowerLevel(int o)
 {
   if (o != 100)
-    settingLevelOffset = o - (int)((peakLevel/ 2.0  - settingAttenuate) - 120.0);
+    settingLevelOffset = o - peakLevel - settingAttenuate;
   else
     settingLevelOffset = 0;
   dirty = true;
@@ -151,15 +180,18 @@ void SetAverage(int v)
 //------------------------------------------
 
 
-int peakLevel;
+double peakLevel;
 double peakFreq;
 int peakIndex;
+double temppeakLevel;
+double temppeakFreq;
+int temppeakIndex;
 
 #define BARSTART  24
 
 
-static float ownrbw = 0;
-static float vbw = 0;
+float rbw = 0;
+float vbw = 0;
 
 
 int inData = 0;
@@ -169,7 +201,6 @@ unsigned long  lastFreq[6] = { 300000000, 300000000,0,0,0,0};
 int lastParameter[10];
 int parameter;
 int VFO = 0;
-int RX = 2;
 int extraVFO=-1;
 int extraVFO2 = -1;
 unsigned long reg = 0;
@@ -180,9 +211,6 @@ double delta=0.0;
 int phase=0;
 int deltaPhase;
 int delaytime = 50;
-int drive = 6;
-unsigned int sensor;
-int hardware = 0;
 
 
 
@@ -243,21 +271,21 @@ void displayHisto ()
     tft.print("dB/");
     old_settingAttenuate = settingAttenuate;
     old_settingPowerGrid = settingPowerGrid;
-    old_ownrbw = -1;
+    old_rbw = -1;
   }  
 
-  if (old_ownrbw != ownrbw || old_vbw != vbw) {
+  if (old_rbw != rbw || old_vbw != vbw) {
     tft.fillRect(56, 0, 99, oY-2, DISPLAY_BLACK);
     tft.setCursor(56,0);             // Start at top-left corner
     tft.setTextColor(DISPLAY_WHITE);        // Draw white text
     tft.print("RBW:");
-    tft.print(ownrbw);
+    tft.print(rbw);
     tft.print("kHz");
     tft.setCursor(56,8);             // Start at top-left corner
     tft.print("VBW:");
     tft.print(vbw);
     tft.print("kHz");
-    old_ownrbw = ownrbw;
+    old_rbw = rbw;
     old_vbw = vbw;
   }  
 
@@ -385,112 +413,109 @@ void setFreq(int V, unsigned long freq)
   }
 }
 
-void SetRX(int p)
+void SetRX(int m)
 {
-  RX = p;
-  if (RX == 3) {  //Both on RX
+switch(m) {
+case M_LOW:
     SI4432_Sel = 0;
-    SI4432_Write_Byte(0x7, 0x0B); // start TX
-    SI4432_Write_Byte(0x6D, 0x1F);//Set low power
+    SI4432_Write_Byte(0x07, 0x07);// Enable receiver chain
     SI4432_Sel = 1;
     SI4432_Write_Byte(0x7, 0x0B); // start TX
-    SI4432_Write_Byte(0x6D, 0x1F);//Set full power
-  } else {
-    if (RX == 0) {
-      SI4432_Sel = 0;
-      SI4432_Write_Byte(0x07, 0x07);// Enable receiver chain
-
-      SI4432_Sel = 1;
-      SI4432_Write_Byte(0x7, 0x0B); // start TX
-      SI4432_Write_Byte(0x6D, 0x1C + (drive - 2 )/2);//Set full power
-
-    } else if (RX == 1) {
-      SI4432_Sel = 0; // both as receiver to avoid spurs
-      SI4432_Write_Byte(0x07, 0x07);// Enable receiver chain
-
-      SI4432_Sel = 1;
-      SI4432_Write_Byte(0x07, 0x07);// Enable receiver chain
-
-    } else if (RX == 2) { // SI4463 as receiver
-      SI4432_Sel = 0;
-      SI4432_Write_Byte(0x07, 0x07);// Enable receiver chain
-
-      SI4432_Sel = 1;
-      SI4432_Write_Byte(0x7, 0x0B); // start TX
-      SI4432_Write_Byte(0x6D, 0x1C + (drive - 2 )/2);//Set full power
-    }
-#if 0 // compact
-    SI4432_Sel = (RX ? 1 : 0);
+    SI4432_Write_Byte(0x6D, 0x1C + settingDrive);//Set full power
+    // SI4432_SetPowerReference(settingPowerCal);
+    break;
+case M_HIGH:
+    // SI4432_SetPowerReference(-1); // Stop reference output
+    SI4432_Sel = 0; // both as receiver to avoid spurs
     SI4432_Write_Byte(0x07, 0x07);// Enable receiver chain
-
-    SI4432_Sel = (RX ? 0 : 1);
+    SI4432_Sel = 1;
+    SI4432_Write_Byte(0x07, 0x07);// Enable receiver chain
+    break;
+case M_GEN:
+    SI4432_Sel = 0;
     SI4432_Write_Byte(0x7, 0x0B); // start TX
-    SI4432_Write_Byte(0x6D, 0x1C + (drive - 2 )/2);//Set full power
-#endif
+    SI4432_Write_Byte(0x6D, 0x1C);//Set low power
+    SI4432_Sel = 1;
+    SI4432_Write_Byte(0x7, 0x0B); // start TX
+    SI4432_Write_Byte(0x6D, 0x1C + settingDrive);//Set full power
+    break;
   }
-
 }
 
-int autoSweepStep = 0;
-long autoSweepFreq = 0;
-long autoSweepFreqStep = 0;
-int standalone = true;
-
+void update_rbw(uint32_t delta_f)
+{
+  vbw = (delta_f)/1000.0;
+  rbw = settingBandwidth;
+//  float old_rbw = rbw;
+  if (rbw == 0)
+    rbw = 1.2*vbw;
+  if (rbw < 2.6)
+    rbw = 2.6;
+//  old_vbw = vbw;
+  rbw = SI4432_SET_RBW(rbw);
+  dirty = true;
+}
 
 void perform(int i)
 {
+  long local_IF = (settingMode == 0?frequency_IF:0);
   if (i == 0) {
-    ownrbw = settingBandwidth;
-    if (ownrbw == 0)
-      ownrbw = 1.2*((float)(frequencies[1] - frequencies[0]))/1000.0;
+#if 0
+    float old_rbw, old_vbw;
+    rbw = settingBandwidth;
+    old_rbw = rbw;
+    if (rbw == 0)
+      rbw = 1.2*((float)(frequencies[1] - frequencies[0]))/1000.0;
 
-    if (ownrbw < 2.6)
-      ownrbw = 2.6;
-    autoSweepFreq = frequencies[0];
-    autoSweepFreqStep = (frequencies[1] - frequencies[0])/POINT_COUNT;
-    vbw = autoSweepFreqStep/1000.0;
-    setFreq (0, frequency_IF);
+    if (rbw < 2.6)
+      rbw = 2.6;
+    old_vbw = vbw;
+    vbw = (frequencies[1] - frequencies[0])/1000.0;
+    rbw = SI4432_SET_RBW(rbw);
+    if (vbw != old_vbw || rbw != old_rbw)
+      redraw_request != REDRAW_CAL_STATUS;
+#endif
+    setFreq (0, local_IF);
     int p = - settingAttenuate * 2;
     PE4302_Write_Byte(p);
+    SI4432_Sel = (settingMode & 1);
+    SetRX(settingMode);
     SI4432_SetPowerReference(settingPowerCal);
-    SI4432_Sel = 0;
-    ownrbw = SI4432_SET_RBW(ownrbw);
-    SI4432_Sel = 1;
-    SI4432_Write_Byte(0x6D, 0x1C + (drive - 2 )/2);//Set full power
-    SetRX(settingGenerate ? 3 : 0);
-    peakLevel = -150;
-    peakFreq = -1.0;
+    temppeakLevel = -150;
+    temppeakFreq = -1.0;
     SI4432_Sel=1;
-    setFreq (1, frequency_IF + autoSweepFreq + (long)(ownrbw < 300.0?settingSpur * ownrbw:0));
+    setFreq (1, local_IF + frequencies[0] + (long)(rbw < 300.0?settingSpur * rbw:0));
+    if (dirty) {
+      scandirty = true;
+      dirty = false;
+    }
   }
-  if (autoSweepFreqStep >0 && i > 0) {
+  if (vbw >0 && i > 0) {
     SI4432_Sel=1;
-    setFreq (1, frequency_IF + frequencies[i] + (long)(ownrbw < 300.0?settingSpur * ownrbw:0));
+    setFreq (1, local_IF + frequencies[i] + (long)(rbw < 300.0?settingSpur * rbw:0));
   }
-  SI4432_Sel=0;
-  double RSSI = SI4432_RSSI(i);
-  if (vbw > ownrbw) {
-    int subSteps = ((int)(1.5 * vbw / ownrbw)) - 1;
+  SI4432_Sel=(settingMode & 1);
+  double RSSI = SI4432_RSSI(i)+settingLevelOffset-settingAttenuate;
+  if (vbw > rbw) {
+    int subSteps = ((int)(1.5 * vbw / rbw)) - 1;
 
     while (subSteps > 0) {
       //Serial.print("substeps = ");
       //Serial.println(subSteps);
       SI4432_Sel=1;
-      setFreq (1, frequency_IF + frequencies[i] + subSteps * ownrbw * 1000 + (long)(ownrbw < 300.0?settingSpur * ownrbw * 1000:0));
-       SI4432_Sel=0;
-      double subRSSI = SI4432_RSSI(i);
+      setFreq (1, local_IF + frequencies[i] + subSteps * rbw * 1000 + (long)(rbw < 300.0?settingSpur * rbw * 1000:0));
+      SI4432_Sel=(settingMode & 1);
+      double subRSSI = SI4432_RSSI(i)+settingLevelOffset-settingAttenuate;
       if (RSSI < subRSSI)
         RSSI = subRSSI;
       subSteps--;
     }
   }
   temp_t[i] = RSSI;
-  if (settingShowStorage) {
-    if (settingSubtractStorage) {
-      RSSI = RSSI - stored_t[i] ;
-    }
+  if (settingSubtractStorage) {
+    RSSI = RSSI - stored_t[i] ;
   }
-  if (dirty || settingAverage == AV_OFF)
+  if (scandirty || settingAverage == AV_OFF)
     actual_t[i] = RSSI;
   else {
     switch(settingAverage) {
@@ -501,20 +526,30 @@ void perform(int i)
     case AV_8: actual_t[i] = (actual_t[i]*7 + RSSI) / 8.0; break;
     }
   }
-  if (autoSweepFreq > 1000000) {
-    if (peakLevel < actual_t[i]) {
-      peakIndex = i;
-      peakLevel = actual_t[i];
-      peakFreq = autoSweepFreq;
+  if (frequencies[i] > 1000000) {
+    if (temppeakLevel < actual_t[i]) {
+      temppeakIndex = i;
+      temppeakLevel = actual_t[i];
     }
   }
-  if (actual_t[i] == 0) {
+  if (temp_t[i] == 0) {
     SI4432_Init();
   }
-  if (i = POINT_COUNT -1) {
-    if (settingAverage && dirty)
-      dirty = false;
+  if (i == POINT_COUNT -1) {
+    if (scandirty) {
+      scandirty = false;
+    }
+    peakIndex = temppeakIndex;
+    peakLevel = actual_t[peakIndex];
+    peakFreq = frequencies[peakIndex];
     settingSpur = -settingSpur;
+    int peak_marker = 0;
+    markers[peak_marker].enabled = true;
+    markers[peak_marker].index = peakIndex;
+    markers[peak_marker].frequency = frequencies[markers[peak_marker].index];
+//    redraw_marker(peak_marker, FALSE);
+
+
   }
 }
 
@@ -560,3 +595,53 @@ void int WriteReadRegister() {
   }
 }
 #endif
+
+
+char *averageText[] = { "OFF", "MIN", "MAX", "2", "4", "8"};
+char *dBText[] = { "1dB/", "2dB/", "5dB/", "10dB/", "20dB/"};
+
+void draw_cal_status(void)
+{
+#define BLEN    10
+  char buf[BLEN];
+#define YSTEP   8
+  int x = 0;
+  int y = OFFSETY;
+
+#define XSTEP   40
+
+  ili9341_fill(x, y, OFFSETX, HEIGHT, 0x0000);
+
+  int yMax = (YGRIDS - get_trace_refpos(0)) * get_trace_scale(0);
+  chsnprintf(buf, BLEN, "%ddB", yMax);
+  ili9341_drawstring_5x7(buf, x, y, 0xffff, 0x0000);
+
+  y += YSTEP*2;
+  chsnprintf(buf, BLEN, "%ddB/",(int)get_trace_scale(0));
+  ili9341_drawstring_5x7(buf, x, y, 0xffff, 0x0000);
+
+  y += YSTEP*2;
+  ili9341_drawstring_5x7("Attn", x, y, 0xffff, 0x0000);
+
+  y += YSTEP;
+  chsnprintf(buf, BLEN, "%ddB", settingAttenuate);
+  ili9341_drawstring_5x7(buf, x, y, 0xffff, 0x0000);
+
+  y += YSTEP*2;
+  ili9341_drawstring_5x7("RBW", x, y, 0xffff, 0x0000);
+
+  y += YSTEP;
+  chsnprintf(buf, BLEN, "%dkHz", (int)rbw);
+  ili9341_drawstring_5x7(buf, x, y, 0xffff, 0x0000);
+
+  y += YSTEP*2;
+  ili9341_drawstring_5x7("VBW", x, y, 0xffff, 0x0000);
+
+  y += YSTEP;
+  chsnprintf(buf, BLEN, "%dkHz",(int)vbw);
+  ili9341_drawstring_5x7(buf, x, y, 0xffff, 0x0000);
+
+  y = HEIGHT-7 + OFFSETY;
+  chsnprintf(buf, BLEN, "%ddB", (int)(yMax - get_trace_scale(0) * YGRIDS));
+  ili9341_drawstring_5x7(buf, x, y, 0xffff, 0x0000);
+}

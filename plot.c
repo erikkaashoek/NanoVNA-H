@@ -354,7 +354,7 @@ rectangular_grid(int x, int y)
   //if (((x - grid_offset) % grid_width) == 0)
   if (x == 0 || x == WIDTH-1)
     return c;
-  if ((y % GRIDY) == 0)
+  if (((y + GRIDY_OFFSET) % GRIDY) == 0)
     return c;
   if ((((x + grid_offset) * 10) % grid_width) < 10)
     return c;
@@ -379,7 +379,9 @@ static int rectangular_grid_y(int y)
   int c = config.grid_color;
   if (y < 0)
     return 0;
-  if ((y % GRIDY) == 0)
+//  if (y == HEIGHT-1)
+//    return c;
+  if (((y+GRIDY_OFFSET) % GRIDY) == 0)
     return c;
   return 0;
 }
@@ -425,7 +427,12 @@ draw_on_strut(int v0, int d, int color)
  */ 
 static float logmag(float *v)
 {
+#ifdef __VNA__
   return log10f(v[0]*v[0] + v[1]*v[1]) * 10;
+#endif
+#ifdef __SA__
+  return v[0];  // raw data is in logmag*10 format
+#endif
 }
 
 #ifdef __VNA__
@@ -519,7 +526,7 @@ static uint32_t trace_into_index(
 {
   int y = 0;
   float v = 0;
-  float refpos = 8 - get_trace_refpos(t);
+  float refpos = YGRIDS - get_trace_refpos(t);
   float scale = 1 / get_trace_scale(t);
   switch (trace[t].type) {
   case TRC_LOGMAG:
@@ -557,8 +564,8 @@ static uint32_t trace_into_index(
     break;
   }
   if (v < 0) v = 0;
-  if (v > 8) v = 8;
-  y = (int)(v * GRIDY);
+  if (v > YGRIDS) v = YGRIDS;
+  y = (int)(v * GRIDY)+GRIDY_OFFSET;
   return INDEX(x +CELLOFFSETX, y, i);
 }
 #endif
@@ -571,12 +578,12 @@ static uint32_t trace_into_index(
 {
   int y = 0;
   float v = 0;
-  float refpos = 8 - get_trace_refpos(t);
+  float refpos = YGRIDS - get_trace_refpos(t);
   float scale = 1 / get_trace_scale(t);
-  v = refpos - log10f(coeff[i]) * 10 * scale;
+  v = refpos - logmag(&coeff[i])* scale;
   if (v < 0) v = 0;
-  if (v > 8) v = 8;
-  y = (int)(v * GRIDY);
+  if (v > YGRIDS) v = YGRIDS;
+  y = (int)(v * GRIDY)+GRIDY_OFFSET;
   return INDEX(x +CELLOFFSETX, y, i);
 }
 
@@ -738,7 +745,7 @@ static void trace_get_value_string(
     int point_count)
 {
   float v;
-    v = log10f(coeff[i]) * 10;
+    v = logmag(&coeff[i]);
     if (v == -INFINITY)
       chsnprintf(buf, len, "-INF dB");
     else
@@ -785,7 +792,7 @@ static float distance_of_index(int idx) {
 
 static inline void mark_map(int x, int y)
 {
-  if (y >= 0 && y < 8 && x >= 0 && x < 16)
+  if (y >= 0 && y < YGRIDS && x >= 0 && x < 16)
     markmap[current_mappage][y] |= 1<<x;
 }
 
@@ -1027,7 +1034,7 @@ static int search_index_range_x(int x, uint32_t index[POINT_COUNT], int *i0, int
     j--;
   *i0 = j;
   j = i;
-  while (j < 100 && x == CELL_X0(index[j+1]))
+  while (j < POINT_COUNT - 1 && x == CELL_X0(index[j+1]))
     j++;
   *i1 = j;
   return TRUE;
@@ -1065,7 +1072,7 @@ static void cell_draw_refpos(int m, int n, int w, int h)
     if (trace[t].type == TRC_SMITH || trace[t].type == TRC_POLAR)
       continue;
     int x = 0 - x0 +CELLOFFSETX;
-    int y = 8*GRIDY - (int)(get_trace_refpos(t) * GRIDY) - y0;
+    int y = YGRIDS*GRIDY + GRIDY_OFFSET - (int)(get_trace_refpos(t) * GRIDY) - y0;
     if (x > -5 && x < w && y >= -3 && y < h+3)
       draw_refpos(w, h, x, y, config.trace_color[t]);
   }
@@ -1244,7 +1251,7 @@ static void draw_cell(int m, int n)
     for (x = 0; x < w; x++) {
       uint16_t c = rectangular_grid_x(x+x0off);
       for (y = 0; y < h; y++)
-        spi_buffer[y * w + x] = c;
+          spi_buffer[y * w + x] = c;
     }
     for (y = 0; y < h; y++) {
       uint16_t c = rectangular_grid_y(y+y0);
@@ -1359,10 +1366,8 @@ void draw_all(bool flush)
         draw_all_cells(flush);
     if (redraw_request & REDRAW_FREQUENCY)
         draw_frequencies();
-#ifdef __VNA__
     if (redraw_request & REDRAW_CAL_STATUS)
         draw_cal_status();
-#endif
     redraw_request = 0;
 }
 
@@ -1452,12 +1457,14 @@ static void cell_draw_marker_info(int m, int n, int w, int h)
     int ypos = 1 + (j/2)*7;
     xpos -= m * CELLWIDTH -CELLOFFSETX;
     ypos -= n * CELLHEIGHT;
+#ifdef __VNA__
     chsnprintf(buf, sizeof buf,trc_channel_name[trace[t].channel]);
     cell_drawstring_invert_5x7(w, h, buf, xpos, ypos, config.trace_color[t], t == uistat.current_trace);
     xpos += 20;
     trace_get_info(t, buf, sizeof buf);
     cell_drawstring_5x7(w, h, buf, xpos, ypos, config.trace_color[t]);
     xpos += 64;
+#endif
     trace_get_value_string(
         t, buf, sizeof buf,
         idx, measured[trace[t].channel], frequencies, sweep_points);
@@ -1568,6 +1575,7 @@ static void frequency_string(char *buf, size_t len, int32_t freq)
     *buf++ = '-';
     len -= 1;
   }
+#ifdef __VNA__
   if (freq < 1000) {
     chsnprintf(buf, len, "%d Hz", (int)freq);
   } else if (freq < 1000000) {
@@ -1580,6 +1588,20 @@ static void frequency_string(char *buf, size_t len, int32_t freq)
              (int)((freq / 1000) % 1000),
              (int)(freq % 1000));
   }
+#endif
+#ifdef __SA__
+  if (freq < 1000) {
+    chsnprintf(buf, len, "%d Hz", (int)freq);
+  } else if (freq < 1000000) {
+    chsnprintf(buf, len, "%d.%03dkHz",
+             (int)(freq / 1000),
+             (int)(freq % 1000));
+  } else {
+    chsnprintf(buf, len, "%d.%03dMHz",
+             (int)(freq / 1000000),
+             (int)((freq / 1000) % 1000));
+  }
+#endif
 }
 
 void draw_frequencies(void)
@@ -1598,7 +1620,7 @@ void draw_frequencies(void)
         strcpy(buf, "STOP ");
         frequency_string(buf+5, 24-5, stop);
         strcat(buf, "    ");
-        ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
+        ili9341_drawstring_5x7(buf, 205+7*5, 233, 0xffff, 0x0000);
       } else if (frequency1 < 0) {
         int fcenter = frequency0;
         int fspan = -frequency1;
@@ -1609,7 +1631,7 @@ void draw_frequencies(void)
         strcpy(buf, "SPAN ");
         frequency_string(buf+5, 24-5, fspan);
         strcat(buf, "    ");
-        ili9341_drawstring_5x7(buf, 205, 233, 0xffff, 0x0000);
+        ili9341_drawstring_5x7(buf, 205+7*5, 233, 0xffff, 0x0000);
       } else {
         int fcenter = frequency0;
         chsnprintf(buf, 24, "CW %d.%03d %03d MHz    ",
@@ -1986,7 +2008,7 @@ void draw_battery_status(void)
     for (i = 0; i < 8; i++)
         buf[y * w + x++] = col;
 
-    ili9341_bulk(0, 1, w, h);
+    ili9341_bulk(0, 200, w, h);
 chMtxUnlock(&mutex_ili9341); // [/protect spi_buffer]
 }
 
@@ -2002,9 +2024,7 @@ redraw_frame(void)
 {
   ili9341_fill(0, 0, 320, 240, 0);
   draw_frequencies();
-#ifdef __VNA__
   draw_cal_status();
-#endif
 }
 
 void

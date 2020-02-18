@@ -585,7 +585,7 @@ ili9341_drawstring_7x13("TOUCH LOWER RIGHT", 196, 214, 0xffff, 0x0000);
   config.touch_cal[2] = (x2 - x1) * 16 / 320;
   config.touch_cal[3] = (y2 - y1) * 16 / 240;
 
-  //redraw_all();
+//  redraw_all();
   touch_start_watchdog();
 }
 
@@ -1259,6 +1259,7 @@ static const keypads_t keypads_scale[] = {
   { 0, 0, -1 }
 };
 
+#ifdef __VNA__
 static const keypads_t keypads_time[] = {
   { KP_X(1), KP_Y(3), KP_PERIOD },
   { KP_X(0), KP_Y(3), 0 },
@@ -1277,6 +1278,27 @@ static const keypads_t keypads_time[] = {
   { KP_X(2), KP_Y(3), KP_BS },
   { 0, 0, -1 }
 };
+#endif
+
+#ifdef __SA__
+static const keypads_t keypads_level[] = {
+  { KP_X(1), KP_Y(3), KP_PERIOD },
+  { KP_X(0), KP_Y(3), 0 },
+  { KP_X(0), KP_Y(2), 1 },
+  { KP_X(1), KP_Y(2), 2 },
+  { KP_X(2), KP_Y(2), 3 },
+  { KP_X(0), KP_Y(1), 4 },
+  { KP_X(1), KP_Y(1), 5 },
+  { KP_X(2), KP_Y(1), 6 },
+  { KP_X(0), KP_Y(0), 7 },
+  { KP_X(1), KP_Y(0), 8 },
+  { KP_X(2), KP_Y(0), 9 },
+  { KP_X(3), KP_Y(2), KP_MINUS },
+  { KP_X(3), KP_Y(3), KP_X1 },
+  { KP_X(2), KP_Y(3), KP_BS },
+  { 0, 0, -1 }
+};
+#endif
 
 static const keypads_t * const keypads_mode_tbl[] = {
   keypads_freq, // start
@@ -1285,16 +1307,29 @@ static const keypads_t * const keypads_mode_tbl[] = {
   keypads_freq, // span
   keypads_freq, // cw freq
   keypads_scale, // scale
+#ifdef __VNA__
   keypads_scale, // refpos
   keypads_time, // electrical delay
   keypads_scale, // velocity factor
   keypads_time // scale of delay
+#endif
+#ifdef __SA__
+  keypads_level, // refpos
+  keypads_scale, // attenuation
+  keypads_level, // actual power
+#endif
 };
 
+#ifdef __VNA__
 static const char * const keypad_mode_label[] = {
   "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "EDELAY", "VELOCITY%", "DELAY"
 };
-
+#endif
+#ifdef __SA__
+static const char * const keypad_mode_label[] = {
+  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "ATTENUATION", "ACTUALPOWER"
+};
+#endif
 
 static void draw_keypad(void)
 {
@@ -1542,6 +1577,7 @@ static void leave_ui_mode(void)
     request_to_draw_cells_behind_numeric_input();
     erase_numeric_input();
     draw_frequencies();
+    draw_cal_status();
   }
 }
 
@@ -1711,18 +1747,20 @@ static void ui_process_normal(void)
     if (status & EVT_BUTTON_SINGLE_CLICK) {
       ui_mode_menu();
     } else {
+      int step = 1;
       do {
         if (active_marker >= 0 && markers[active_marker].enabled) {
-          if ((status & EVT_DOWN) && markers[active_marker].index > 0) {
-            markers[active_marker].index--;
+          if ((status & EVT_DOWN) && markers[active_marker].index >=step) {
+            markers[active_marker].index -= step;
             markers[active_marker].frequency = frequencies[markers[active_marker].index];
             redraw_marker(active_marker, FALSE);
           }
-          if ((status & EVT_UP) && markers[active_marker].index < (POINT_COUNT-1)) {
-            markers[active_marker].index++;
+          if ((status & EVT_UP) && markers[active_marker].index < (POINT_COUNT-step)) {
+            markers[active_marker].index += step;
             markers[active_marker].frequency = frequencies[markers[active_marker].index];
             redraw_marker(active_marker, FALSE);
           }
+          step++;
         }
         status = btn_wait_release();
       } while (status != 0);
@@ -1791,12 +1829,32 @@ static int keypad_click(int key)
     case KM_CW:
       set_sweep_frequency(ST_CW, (int32_t)value);
       break;
+#ifdef __VNA__
     case KM_SCALE:
       set_trace_scale(uistat.current_trace, value);
       break;
     case KM_REFPOS:
       set_trace_refpos(uistat.current_trace, value);
       break;
+#endif
+#ifdef __SA__
+    case KM_SCALE:
+      set_trace_scale(0, value);
+      set_trace_scale(1, value);
+      set_trace_scale(2, value);
+      break;
+    case KM_REFPOS:
+      set_trace_refpos(0, YGRIDS - value / get_trace_scale(0));
+      set_trace_refpos(1, YGRIDS - value / get_trace_scale(0));
+      set_trace_refpos(2, YGRIDS - value / get_trace_scale(0));
+      break;
+    case KM_ATTENUATION:
+       SetAttenuation(value);
+       break;
+    case KM_ACTUALPOWER:
+      SetPowerLevel(value);
+      break;
+#endif
 #ifdef __VNA__
     case KM_EDELAY:
       set_electrical_delay(value); // pico seconds
@@ -2023,7 +2081,7 @@ static void ui_process_keypad(void)
   redraw_frame();
   request_to_redraw_grid();
   ui_mode_normal();
-  //redraw_all();
+//  redraw_all();
   touch_start_watchdog();
 }
 

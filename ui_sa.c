@@ -13,7 +13,6 @@ void set_refer_output(int);
 void SetAttenuation(int);
 void SetPowerLevel(int);
 void SetGenerate(int);
-void SetRX(int);
 void SetRBW(int);
 void SetSpur(int);
 void SetAverage(int);
@@ -24,41 +23,46 @@ void AllDirty(void);
 void MenuDirty(void);
 void redrawHisto(void);
 
-char *averageText[] = { "OFF", "MIN", "MAX", "2", "4", "8"};
-
-void draw_cal_status(void)
-{
-}
 
 // ===[MENU CALLBACKS]=========================================================
 
 
 int generator_enabled = false;
 
-static void menu_output_cb(int item)
+static void menu_mode_cb(int item)
 {
   switch (item) {
-  case 1: // Toggle generate
-    generator_enabled = !generator_enabled;
-    SetGenerate(generator_enabled);
-    draw_menu();
+  case 4: // Change reference output
+    break;
+  default:
+    SetMode(item);
+    menu_move_back();
+    ui_mode_normal();
     break;
   }
-  //menu_move_back();
+
 }
 
-
+extern int dirty;
 static void menu_autosettings_cb(int item)
 {
     set_sweep_frequency(ST_START, (int32_t) 0);
-    set_sweep_frequency(ST_STOP, (int32_t) 250000000);
-    SetPowerGrid(10);
-    SetRefLevel(-10);
+    set_sweep_frequency(ST_STOP, (int32_t) 300000000);
+    int value = -10; // Top at -10dB
+    set_trace_refpos(0, - value / get_trace_scale(0) + YGRIDS);
+    set_trace_refpos(1, - value / get_trace_scale(0) + YGRIDS);
+    set_trace_refpos(2, - value / get_trace_scale(0) + YGRIDS);
+    value = 10; // 10dB/
+    set_trace_scale(0, value);
+    set_trace_scale(1, value);
+    set_trace_scale(2, value);
+
     set_refer_output(1);
+    SetMode(M_LOW);
     SetAttenuation(0);
     SetPowerLevel(100); // Reset
     SetRBW(0);
-    SetRX(0);
+    dirty = true;
   menu_move_back();
   ui_mode_normal();
 }
@@ -164,7 +168,9 @@ int menu_dBper_value[]={1,2,5,10,20};
 
 static void menu_dBper_cb(int item)
 {
-  SetPowerGrid(menu_dBper_value[item]); 
+  set_trace_scale(0, menu_dBper_value[item]);
+  set_trace_scale(1, menu_dBper_value[item]);
+  set_trace_scale(2, menu_dBper_value[item]);
   menu_move_back();
   ui_mode_normal();
   draw_cal_status();
@@ -183,7 +189,7 @@ static void choose_active_trace(void)
       return;
     }
 }
-
+#if 0
 static void menu_trace_cb(int item)
 {
   if (item < 0 || item >= TRACE_COUNT )
@@ -265,6 +271,7 @@ static void menu_channel_cb(int item)
   menu_move_back();
   ui_mode_normal();
 }
+#endif
 
 static void choose_active_marker(void)
 {
@@ -390,7 +397,7 @@ static const menuitem_t menu_dBper[] = {
   MENUITEM_END
 };
 
-
+#if 0
 static const menuitem_t menu_trace[] = {
   MENUITEM_FUNC("TRACE 0",      menu_trace_cb),
   MENUITEM_FUNC("TRACE 1",      menu_trace_cb),
@@ -425,6 +432,7 @@ static const menuitem_t menu_format[] = {
   MENUITEM_BACK,
   MENUITEM_END
 };
+#endif
 
 static const menuitem_t menu_refer2[] = {
   MENUITEM_FUNC("3MHz" ,   menu_refer_cb2),
@@ -493,9 +501,11 @@ static const menuitem_t menu_dfu[] = {
   MENUITEM_END
 };
 
-static const menuitem_t menu_output[] = {
-  MENUITEM_MENU("REFERENCE",    menu_refer),
-  MENUITEM_FUNC("GENERATOR",    menu_output_cb),
+static const menuitem_t menu_mode[] = {
+  MENUITEM_FUNC("\2LOW\0RANGE", menu_mode_cb),
+  MENUITEM_FUNC("\2HIGH\0RANGE",menu_mode_cb),
+  MENUITEM_FUNC("GENERATOR",    menu_mode_cb),
+  MENUITEM_MENU("\2REF\0OUTPUT",menu_refer),
   MENUITEM_BACK,
   MENUITEM_END
 };
@@ -515,9 +525,10 @@ static const menuitem_t menu_config[] = {
 static const menuitem_t menu_top[] = {
   MENUITEM_FUNC("\2AUTO\0SETTINGS",  menu_autosettings_cb),
   MENUITEM_MENU("SCAN",       menu_stimulus),
+  MENUITEM_MENU("MARKER",     menu_marker),
   MENUITEM_MENU("DISPLAY",    menu_scale),
   MENUITEM_MENU("STORAGE",    menu_storage),
-  MENUITEM_MENU("OUTPUT",     menu_output),
+  MENUITEM_MENU("MODE",       menu_mode),
   MENUITEM_MENU("CONFIG",     menu_config),
   MENUITEM_END,
  // MENUITEM_CLOSE,
@@ -525,17 +536,20 @@ static const menuitem_t menu_top[] = {
 
 // ===[MENU DEFINITION END]======================================================
 
+#undef BOARD_NAME
+#define BOARD_NAME  "tinySA"
+
+
 void
 show_logo(void)
 {
   int x = 15, y = 30;
   ili9341_fill(0, 0, 320, 240, 0);
-#if !defined(ANTENNA_ANALYZER)
   ili9341_drawstring_size(BOARD_NAME, x+60, y, RGBHEX(0x0000FF), 0x0000, 4);
   y += 25;
 
-  ili9341_drawstring_size("NANOVNA.COM", x+100, y += 10, 0xffff, 0x0000, 2);
-  ili9341_drawstring_5x7("https://github.com/hugen79/NanoVNA-H", x, y += 20, 0xffff, 0x0000);
+  ili9341_drawstring_size("TINYSA.ORG", x+100, y += 10, 0xffff, 0x0000, 2);
+  ili9341_drawstring_5x7("https://github.com/erikkaashoek/tinySA", x, y += 20, 0xffff, 0x0000);
   ili9341_drawstring_5x7("Based on edy555 design", x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_5x7("2016-2019 Copyright @edy555", x, y += 10, 0xffff, 0x0000);
   ili9341_drawstring_5x7("Licensed under GPL. See: https://github.com/ttrftech/NanoVNA", x, y += 10, 0xffff, 0x0000);
@@ -547,18 +561,6 @@ show_logo(void)
 //  ili9341_drawstring_5x7("Port Info: " PORT_INFO, x, y += 10, 0xffff, 0x0000);
 //  ili9341_drawstring_5x7("Platform: " PLATFORM_NAME, x, y += 10, 0xffff, 0x0000);
 
-#else
-  ili9341_drawstring_size(BOARD_NAME, x+80, y, RGBHEX(0x0000FF), 0x0000, 2);
-    y += 14;
-
-    ili9341_drawstring_7x13("NANOVNA.COM", x+100, y += 15, 0xffff, 0x0000);
-    ili9341_drawstring_7x13("https://github.com/hugen79/NanoVNA-H", x, y += 15, 0xffff, 0x0000);
-    ili9341_drawstring_7x13("Based on edy555 design", x, y += 15, 0xffff, 0x0000);
-    ili9341_drawstring_7x13("2016-2019 Copyright @edy555", x, y += 15, 0xffff, 0x0000);
-    ili9341_drawstring_7x13("https://github.com/ttrftech/NanoVNA", x, y += 15, 0xffff, 0x0000);
-    ili9341_drawstring_7x13("Version: " VERSION, x, y += 15, 0xffff, 0x0000);
-    ili9341_drawstring_7x13("Build Time: " __DATE__ " - " __TIME__, x, y += 15, 0xffff, 0x0000);
-#endif
 }
 
 
@@ -650,6 +652,15 @@ static void fetch_numeric_target(void)
     uistat.value = get_trace_scale(uistat.current_trace) * 1e12;
     break;
 #endif
+#ifdef __SA__
+  case KM_ATTENUATION:
+    uistat.value = settingAttenuate;
+     break;
+  case KM_ACTUALPOWER:
+    uistat.value = settingPowerCal;
+    break;
+#endif
+
   }
   
   {

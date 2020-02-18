@@ -40,8 +40,10 @@
 #define STOP_MAX 1500000000
 #endif
 #ifdef __SA__
-#define START_MIN 0
-#define STOP_MAX 350000000
+extern uint32_t minFreq;
+extern uint32_t maxFreq;
+#define START_MIN minFreq
+#define STOP_MAX maxFreq
 #endif
 
 #ifdef __VNA__
@@ -72,7 +74,7 @@ static int8_t sweep_once = FALSE;
 #ifdef __VNA__
 static int8_t cal_auto_interpolate = TRUE;
 #endif
-uint16_t redraw_request = 0; // contains REDRAW_XXX flags
+uint16_t redraw_request = 7; // contains REDRAW_XXX flags
 int16_t vbat = 0;
 #ifdef __VNA__
 bool pll_lock_failed;
@@ -713,6 +715,7 @@ properties_t current_props = {
 #ifdef __SA__
   ._frequency0 =        0, // start = 0Hz
   ._frequency1 =        350000000, // end = 350MHz
+  ._frequency_IF=       433920000,
 #endif
   ._sweep_points =      POINT_COUNT,
 #ifdef __VNA__
@@ -731,9 +734,9 @@ properties_t current_props = {
     { 1, TRC_PHASE,  1, 0, 1.0, 4.0 }
 #endif
 #ifdef __SA__
-    { 1, TRC_LOGMAG, 0, 0, 1.0, 7.0 },  //Actual
-    { 0, TRC_LOGMAG, 1, 0, 1.0, 7.0 },  //Stored
-    { 0, TRC_LOGMAG, 2, 0, 1.0, 7.0 }   //Processed
+    { 1, TRC_LOGMAG, 0, 0, 10.0, (float) YGRIDS+1 },  //Actual
+    { 0, TRC_LOGMAG, 1, 0, 10.0, (float) YGRIDS+1 },  //Stored
+    { 0, TRC_LOGMAG, 2, 0, 10.0, (float) YGRIDS+1 }   //Processed
 #endif
   },
   ._markers = /*[4] */ {
@@ -976,6 +979,9 @@ static void set_frequencies(uint32_t start, uint32_t stop, int16_t points)
   // disable at out of sweep range
   for (; i < sweep_points; i++)
     frequencies[i] = 0;
+#ifdef __SA__
+  update_rbw(frequencies[1]-frequencies[0]);
+#endif
   chMtxUnlock(&mutex_sweep);
 }
 
@@ -1637,7 +1643,12 @@ static const struct {
   uint16_t refpos;
   float scale_unit;
 } trace_info[] = {
+#ifdef __VNA__
   { "LOGMAG", 7, 10 },
+#endif
+#ifdef __SA__
+  { "LOGMAG", 9, 1 },
+#endif
 #ifdef __VNA__
   { "PHASE",  4, 90 },
   { "DELAY",  4,  1e-9 },
@@ -1709,10 +1720,13 @@ void set_trace_channel(int t, int channel)
 
 void set_trace_scale(int t, float scale)
 {
-  scale /= trace_info[trace[t].type].scale_unit;
-  if (trace[t].scale != scale) {
-    trace[t].scale = scale;
+  float oldrefpos = (YGRIDS - get_trace_refpos(t)) * get_trace_scale(t); // in dB
+  int norm_scale = scale / trace_info[trace[t].type].scale_unit;
+  if (trace[t].scale != norm_scale) {
+    trace[t].scale = norm_scale;
+    set_trace_refpos(t, YGRIDS - oldrefpos / get_trace_scale(0));
     force_set_markmap();
+
   }
 }
 
@@ -2422,9 +2436,7 @@ int main(void)
 
     // redraw_frame();
      draw_frequencies();
-#ifdef __VNA__
      draw_cal_status();
-#endif
     chThdSetPriority(HIGHPRIO);
     chThdCreateStatic(waThread1, sizeof(waThread1), NORMALPRIO, Thread1, NULL);
 

@@ -37,7 +37,7 @@
 #define POINT_COUNT     101
 #endif
 #ifdef __SA__
-#define POINT_COUNT     300
+#define POINT_COUNT     290
 #endif
 #define MARKER_COUNT    4
 //#if !defined(ANTENNA_ANALYZER)
@@ -133,10 +133,14 @@ static int32_t get_marker_frequency(int);
 static int btn_wait_release(void);
 enum { OP_NONE = 0, OP_LEVER, OP_TOUCH, OP_FREQCHANGE };
 extern uint8_t operation_requested;
+#ifdef __SA__
 enum {
   AV_OFF, AV_MIN, AV_MAX, AV_2, AV_4, AV_8
 };
-
+enum {
+  M_LOW, M_HIGH, M_GEN
+};
+#endif
 
 #ifdef __VNA__
 /*
@@ -175,7 +179,7 @@ extern void tlv320aic3204_select(int channel);
 /*
  * plot.c
  */
-
+#ifdef __VNA__
 #if !defined(ANTENNA_ANALYZER)
 #define OFFSETX 15
 #define OFFSETY 0
@@ -187,14 +191,31 @@ extern void tlv320aic3204_select(int channel);
 #define WIDTH 291
 #define HEIGHT 231
 #endif
+#endif
+#ifdef __SA__
+#define OFFSETX 25
+#define OFFSETY 0
+#define WIDTH 290
+#define HEIGHT 232
+#define CELLOFFSETY 0
+#endif
 
-#define CELLOFFSETX 5
+#define CELLOFFSETX 0
 #define AREA_WIDTH_NORMAL (WIDTH + CELLOFFSETX*2)
 
 extern int area_width;
 extern int area_height;
 
+#ifdef __VNA__
 #define GRIDY 29
+#define GRIDY_OFFSET    0
+#define YGRIDS  8
+#endif
+#ifdef __SA__
+#define GRIDY 26
+#define GRIDY_OFFSET    0
+#define YGRIDS  9
+#endif
 
 // font
 #if !defined(ANTENNA_ANALYZER)
@@ -496,5 +517,11 @@ int16_t adc_tjun_read(ADC_TypeDef *adc);
     	if (vbat < 4100) return 75;
     	return 100;
     }
+
+#ifdef __SA__
+extern int settingAttenuate;
+extern int settingPowerCal;
+void update_rbw(uint32_t delta_f);
+#endif
 
 #endif //__NANOVNA_H__

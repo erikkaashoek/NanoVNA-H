@@ -4,3 +4,8 @@
 *.o
 *.su
 *.map
+*.bin
+*.dmp
+*.elf
+*.hex
+*.list
