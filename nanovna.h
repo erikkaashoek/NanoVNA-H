@@ -120,7 +120,9 @@ uint32_t get_sweep_frequency(int type);
 void toggle_sweep(void);
 
 extern int8_t sweep_enabled;
-extern float perform(int i, int32_t f);
+#ifdef __SA__
+extern float perform(int i, int32_t f, int e);
+#endif
 /*
  * ui.c
  */

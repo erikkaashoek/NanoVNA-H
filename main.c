@@ -482,7 +482,7 @@ int16_t dump_selection = 0;
 
 static volatile int16_t wait_count = 0;
 
-float measured[3][POINT_COUNT];
+measurement_t measured;
 
 #ifdef __VNA__
 static void wait_dsp(int count)
@@ -798,7 +798,7 @@ static bool sweep(bool break_on_operation)
             apply_edelay_at(i);
 #endif
 #ifdef __SA__
-        float RSSI = perform(i, frequencies[i]);
+        float RSSI = perform(i, frequencies[i], -1);
         temp_t[i] = RSSI;
         if (settingSubtractStorage) {
           RSSI = RSSI - stored_t[i] ;
