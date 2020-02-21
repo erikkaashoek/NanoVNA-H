@@ -1,5 +1,4 @@
-/*
- * 2016-2019 Copyright @edy555, licensed under GPL. https://github.com/ttrftech/NanoVNA
+/* 2016-2019 Copyright @edy555, licensed under GPL. https://github.com/ttrftech/NanoVNA
  * All rights reserved.
  *
  * This is free software; you can redistribute it and/or modify
@@ -42,6 +41,8 @@
 #ifdef __SA__
 extern uint32_t minFreq;
 extern uint32_t maxFreq;
+uint32_t frequencyStart;
+uint32_t frequencyStop;
 #define START_MIN minFreq
 #define STOP_MAX maxFreq
 #endif
@@ -568,7 +569,7 @@ static void cmd_data(BaseSequentialStream *chp, int argc, char *argv[])
             chprintf(chp, "%f %f\r\n", measured[sel][i][0], measured[sel][i][1]);
 #endif
 #ifdef __SA__
-            chprintf(chp, "%f %f\r\n", measured[sel][i]);
+            chprintf(chp, "%f %f\r\n", measured[sel][i], 0.0);
 #endif
 #else
             // printf floating point losslessly: float="%.9g", double="%.17g"
@@ -797,7 +798,46 @@ static bool sweep(bool break_on_operation)
             apply_edelay_at(i);
 #endif
 #ifdef __SA__
-        perform(i);
+        float RSSI = perform(i, frequencies[i]);
+        temp_t[i] = RSSI;
+        if (settingSubtractStorage) {
+          RSSI = RSSI - stored_t[i] ;
+        }
+        if (scandirty || settingAverage == AV_OFF)
+          actual_t[i] = RSSI;
+        else {
+          switch(settingAverage) {
+          case AV_MIN: if (actual_t[i] > RSSI) actual_t[i] = RSSI; break;
+          case AV_MAX: if (actual_t[i] < RSSI) actual_t[i] = RSSI; break;
+          case AV_2: actual_t[i] = (actual_t[i] + RSSI) / 2.0; break;
+          case AV_4: actual_t[i] = (actual_t[i]*3 + RSSI) / 4.0; break;
+          case AV_8: actual_t[i] = (actual_t[i]*7 + RSSI) / 8.0; break;
+          }
+        }
+        if (frequencies[i] > 1000000) {
+          if (temppeakLevel < actual_t[i]) {
+            temppeakIndex = i;
+            temppeakLevel = actual_t[i];
+          }
+        }
+        if (i == sweep_points -1) {
+          if (scandirty) {
+            scandirty = false;
+          }
+          peakIndex = temppeakIndex;
+          peakLevel = actual_t[peakIndex];
+          peakFreq = frequencies[peakIndex];
+          settingSpur = -settingSpur;
+          int peak_marker = 0;
+          markers[peak_marker].enabled = true;
+          markers[peak_marker].index = peakIndex;
+          markers[peak_marker].frequency = frequencies[markers[peak_marker].index];
+      //    redraw_marker(peak_marker, FALSE);
+
+
+        }
+
+
 #endif
         // back to toplevel to handle ui operation
         if (operation_requested && break_on_operation)
@@ -980,7 +1020,7 @@ static void set_frequencies(uint32_t start, uint32_t stop, int16_t points)
   for (; i < sweep_points; i++)
     frequencies[i] = 0;
 #ifdef __SA__
-  update_rbw(frequencies[1]-frequencies[0]);
+  update_rbw(frequencies[1] - frequencies[0]);
 #endif
   chMtxUnlock(&mutex_sweep);
 }
@@ -2261,6 +2301,182 @@ static void cmd_vbat_offset(BaseSequentialStream *chp, int argc, char *argv[])
     config.vbat_offset = (int16_t)offset;
 }
 
+#ifdef __SA__
+#define byte unsigned char
+extern int SI4432_Sel;         // currently selected SI4432
+void SI4432_Write_Byte(byte ADR, byte DATA );
+byte SI4432_Read_Byte( byte ADR );
+int VFO = 0;
+int points = 101;
+int extraVFO = -1;
+
+static void cmd_v(BaseSequentialStream *chp, int argc, char *argv[])
+{
+    if (argc != 1) {
+        chprintf(chp, "%d\r\n", SI4432_Sel);
+        return;
+    }
+    VFO = atoi(argv[0]);
+    chprintf(chp, "VFO %d\r\n", VFO);
+}
+
+int xtoi(char *t)
+{
+  int v;
+  while (*t) {
+    if ('0' <= *t && *t <= '9')
+      v = v*16 + *t - '0';
+    else if ('a' <= *t && *t <= 'f')
+      v = v*16 + *t - 'a' + 10;
+    else if ('A' <= *t && *t <= 'F')
+      v = v*16 + *t - 'a' + 10;
+    else
+      return v;
+    t++;
+  }
+  return v;
+}
+
+static void cmd_x(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  int rvalue;
+  int lvalue = 0;
+  if (argc != 1 && argc != 2) {
+    chprintf(chp, "usage: x {addr(0-95)} [value(0-FF)]\r\n");
+    return;
+  }
+  rvalue = xtoi(argv[0]);
+ // chMtxLock(&mutex_ili9341);
+  SI4432_Sel = VFO;
+  if (argc == 2){
+    lvalue = xtoi(argv[1]);
+    SI4432_Write_Byte(rvalue, lvalue);
+ //   chMtxUnlock(&mutex_ili9341); // [/protect spi_buffer]
+  } else {
+    lvalue = SI4432_Read_Byte(rvalue);
+ //   chMtxUnlock(&mutex_ili9341); // [/protect spi_buffer]
+    chprintf(chp, "%x\r\n", lvalue);
+  }
+}
+
+
+static void cmd_threads(BaseSequentialStream *chp)
+{
+  static const char *states[] = {CH_STATE_NAMES};
+  thread_t *tp;
+  size_t n = 0;
+  size_t sz;
+  uint32_t used_pct;
+
+  chprintf(chp, "\r\n");
+  chprintf(chp, "     begin        end   size   used    %% prio     state         name\r\n");
+  chprintf(chp, "--------------------------------------------------------------------\r\n");
+
+  tp = chRegFirstThread();
+  do {
+     n = 0;
+#if (CH_DBG_ENABLE_STACK_CHECK == TRUE) || (CH_CFG_USE_DYNAMIC == TRUE)
+    uint32_t stklimit = (uint32_t)tp->wabase;
+#else
+    uint32_t stklimit = 0U;
+#endif
+
+    uint8_t *begin = (uint8_t *)stklimit;
+    uint8_t *end = (uint8_t *)tp;
+    sz = end - begin;
+
+    while(begin < end)
+       if(*begin++ == CH_DBG_STACK_FILL_VALUE) ++n;
+
+    used_pct = (n * 100) / sz;
+
+    chprintf(chp, "0x%08lx 0x%08lx %6u %6u %3u%% %4lu %9s %12s\r\n",    stklimit,                                                                                           (uint32_t)tp,
+     sz,
+     n,
+     used_pct,
+     (uint32_t)tp->prio,
+     states[tp->state],
+     tp->name == NULL ? "" : tp->name);
+
+    tp = chRegNextThread(tp);
+  } while (tp != NULL);
+
+  chprintf(chp, "\r\n");
+}
+static void cmd_o(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  int32_t value = atoi(argv[0]);
+  if (VFO == 0)
+    frequency_IF = value;
+}
+
+static void cmd_a(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  int32_t value = atoi(argv[0])- frequency_IF;
+  frequencyStart = value;
+}
+
+static void cmd_b(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  int32_t value = atoi(argv[0])- frequency_IF;
+  frequencyStop = value;
+}
+
+static void cmd_t(BaseSequentialStream *chp, int argc, char *argv[])
+{
+}
+
+static void cmd_e(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  extraVFO = atoi(argv[0]);
+}
+
+static void cmd_s(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  points = atoi(argv[0]);
+}
+
+static void cmd_m(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  sweep_enabled = FALSE;
+  chMtxLock(&mutex_sweep);
+  int32_t f_step = (int32_t)(((float)frequencyStop-(float)frequencyStart)/ points);
+  palClearPad(GPIOC, GPIOC_LED);  // disable led and wait for voltage stabilization
+  update_rbw((frequencyStop - frequencyStart)/points);
+  chThdSleepMilliseconds(10);
+  streamPut(chp, '{');
+  for (int i = 0; i<points; i++) {
+      float val = perform(i, frequencyStart + f_step * i, extraVFO);
+      streamPut(chp, 'x');
+      int v = val*2 + 256;
+      streamPut(chp, (uint8_t)(v & 0xFF));
+      streamPut(chp, (uint8_t)((v>>8) & 0xFF));
+    // enable led
+  }
+  streamPut(chp, '}');
+  palSetPad(GPIOC, GPIOC_LED);
+  chMtxUnlock(&mutex_sweep);
+}
+
+static void cmd_p(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  int p = atoi(argv[0]);
+  int a = atoi(argv[1]);
+  if (p==5)
+    SetAttenuation(a);
+  if (p==6)
+    SetMode(a);
+}
+
+static void cmd_w(BaseSequentialStream *chp, int argc, char *argv[])
+{
+  int p = atoi(argv[0]);
+  SetRBW(p);
+}
+
+
+#endif
+
 static THD_WORKING_AREA(waThread2, /* cmd_* max stack size + alpha */510 + 32);
 
 static const ShellCommand commands[] =
@@ -2324,7 +2540,21 @@ static const ShellCommand commands[] =
     { "color", cmd_color },
 #endif
    { "vbat_offset", cmd_vbat_offset },
-    { NULL, NULL }
+#ifdef __SA__
+   { "x", cmd_x },
+   { "v", cmd_v },
+   { "a", cmd_a },
+   { "b", cmd_b },
+   { "t", cmd_t },
+   { "e", cmd_e },
+   { "s", cmd_s },
+   { "m", cmd_m },
+   { "p", cmd_p },
+   { "w", cmd_w },
+   { "o", cmd_o },
+   { "tinfo", cmd_threads },
+#endif
+   { NULL, NULL }
 };
 
 static const ShellConfig shell_cfg1 =

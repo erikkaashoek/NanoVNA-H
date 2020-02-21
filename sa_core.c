@@ -25,6 +25,7 @@ void PE4302_Write_Byte(unsigned char DATA )
 
 //-----------------SI4432 dummy------------------
 void SI4432_Write_Byte(unsigned char ADR, unsigned char DATA ) {}
+unsigned char SI4432_Read_Byte(unsigned char ADR) {return ADR;}
 float SI4432_SET_RBW(float WISH) {return (WISH > 600.0?600: (WISH<3.0?3:WISH));}
 void SI4432_SetPowerReference(int p) {}
 void SI4432_Set_Frequency(long f) {}
@@ -41,10 +42,10 @@ extern int settingAttenuate;
 
 //#define LEVEL(i, f, v) (v * (1-(fabs(f - frequencies[i])/rbw/1000)))
 
-float LEVEL(int i, uint32_t f, int v)
+float LEVEL(uint32_t i, uint32_t f, int v)
 {
   float dv;
-  float df = fabs((float)f - (float)frequencies[i]);
+  float df = fabs((float)f - (float)i);
   if (df < rbw*1000)
     dv = df/(rbw*1000);
   else
@@ -52,8 +53,9 @@ float LEVEL(int i, uint32_t f, int v)
   return (v - dv - settingAttenuate);
 }
 
-double SI4432_RSSI(int i)
+double SI4432_RSSI(uint32_t i, int s)
 {
+  SI4432_Sel = s;
   double v = -100 + log10(rbw)*10 + NOISE;
   v = fmax(LEVEL(i,10000000,-20),v);
   v = fmax(LEVEL(i,20000000,-40),v);
@@ -200,9 +202,6 @@ unsigned long  stopFreq = 300000000;
 unsigned long  lastFreq[6] = { 300000000, 300000000,0,0,0,0};
 int lastParameter[10];
 int parameter;
-int VFO = 0;
-int extraVFO=-1;
-int extraVFO2 = -1;
 unsigned long reg = 0;
 long offset=0;
 long offset2=0;
@@ -456,61 +455,54 @@ void update_rbw(uint32_t delta_f)
   dirty = true;
 }
 
-void perform(int i)
+float perform(int i, int32_t f, int e)
 {
   long local_IF = (settingMode == 0?frequency_IF:0);
   if (i == 0) {
-#if 0
-    float old_rbw, old_vbw;
-    rbw = settingBandwidth;
-    old_rbw = rbw;
-    if (rbw == 0)
-      rbw = 1.2*((float)(frequencies[1] - frequencies[0]))/1000.0;
-
-    if (rbw < 2.6)
-      rbw = 2.6;
-    old_vbw = vbw;
-    vbw = (frequencies[1] - frequencies[0])/1000.0;
-    rbw = SI4432_SET_RBW(rbw);
-    if (vbw != old_vbw || rbw != old_rbw)
-      redraw_request != REDRAW_CAL_STATUS;
-#endif
-    setFreq (0, local_IF);
     int p = settingAttenuate * 2;
     PE4302_Write_Byte(p);
-    SI4432_Sel = (settingMode & 1);
     SetRX(settingMode);
     SI4432_SetPowerReference(settingPowerCal);
     temppeakLevel = -150;
     temppeakFreq = -1.0;
-    SI4432_Sel=1;
-    setFreq (1, local_IF + frequencies[0] + (long)(rbw < 300.0?settingSpur * rbw:0));
+    if (e == 0)
+      setFreq (0, local_IF+f);
+    else
+      setFreq (0, local_IF);
+    setFreq (1, local_IF + f + (long)(rbw < 300.0?settingSpur * rbw:0));
     if (dirty) {
       scandirty = true;
       dirty = false;
     }
   }
+  uint32_t lf = f + (long)(rbw < 300.0?settingSpur * rbw:0);
   if (vbw >0 && i > 0) {
-    SI4432_Sel=1;
-    setFreq (1, local_IF + frequencies[i] + (long)(rbw < 300.0?settingSpur * rbw:0));
+    if (e == 0)
+      setFreq (0, local_IF+lf);
+    setFreq (1, local_IF + lf);
   }
-  SI4432_Sel=(settingMode & 1);
-  double RSSI = SI4432_RSSI(i)+settingLevelOffset+settingAttenuate;
+  double RSSI = SI4432_RSSI(lf, settingMode & 1)+settingLevelOffset+settingAttenuate;
   if (vbw > rbw) {
     int subSteps = ((int)(1.5 * vbw / rbw)) - 1;
 
     while (subSteps > 0) {
       //Serial.print("substeps = ");
       //Serial.println(subSteps);
-      SI4432_Sel=1;
-      setFreq (1, local_IF + frequencies[i] + subSteps * rbw * 1000 + (long)(rbw < 300.0?settingSpur * rbw * 1000:0));
-      SI4432_Sel=(settingMode & 1);
-      double subRSSI = SI4432_RSSI(i)+settingLevelOffset+settingAttenuate;
+      lf = f + subSteps * rbw * 1000 + (long)(rbw < 300.0?settingSpur * rbw * 1000:0);
+      if (e == 0)
+        setFreq (0, local_IF+lf);
+      setFreq (1, local_IF + lf);
+      double subRSSI = SI4432_RSSI(lf, settingMode & 1)+settingLevelOffset+settingAttenuate;
       if (RSSI < subRSSI)
         RSSI = subRSSI;
       subSteps--;
     }
   }
+  if (RSSI == 0) {
+    SI4432_Init();
+  }
+  return(RSSI);
+#if 0
   temp_t[i] = RSSI;
   if (settingSubtractStorage) {
     RSSI = RSSI - stored_t[i] ;
@@ -551,51 +543,8 @@ void perform(int i)
 
 
   }
-}
-
-#if 0
-void int WriteReadRegister() {
-  if(inData == 'X' || inData == 'x')
-  {
-    char t[40];
-    int i = 0;
-    int reg;
-    int addr;
-    char c = 0;
-    delay(1);
-    while (Serial.available() > 0 && c != ' ') {
-      delay(1);
-      c = Serial.read();  //gets one byte from serial buffer
-      t[i++] = c; //makes the string readString
-    }
-    t[i++] = 0;
-    addr = strtoul(t, NULL, 16);
-    i = 0;
-    while (Serial.available() > 0) {
-      delay(1);
-      c = Serial.read();  //gets one byte from serial buffer
-      t[i++] = c; //makes the string readString
-    }
-    t[i++] = 0;
-    SI4432_Sel = VFO;
-    if (i == 1) {
-      Serial.print("Reg[");
-      Serial.print(addr, HEX);
-      Serial.print("] : ");
-      Serial.println(SI4432_Read_Byte(addr), HEX);
-    } else {
-      reg = strtoul(t, NULL, 16);
-      Serial.print("Reg[");
-      Serial.print(addr, HEX);
-      Serial.print("] = ");
-      Serial.println(reg, HEX);
-      SI4432_Write_Byte(addr, reg);
-    }
-    inData = 0;
-  }
-}
 #endif
-
+}
 
 char *averageText[] = { "OFF", "MIN", "MAX", "2", "4", "8"};
 char *dBText[] = { "1dB/", "2dB/", "5dB/", "10dB/", "20dB/"};
