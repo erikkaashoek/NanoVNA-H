@@ -7,7 +7,7 @@ int SI4432_Sel = 0;
 
 #define PE4302_en 10
 
-void PE4302_init() {
+void PE4302_init(void) {
 //  pinMode(PE4302_en, OUTPUT);
 //  digitalWrite(PE4302_en, LOW);
 }
@@ -23,6 +23,9 @@ void PE4302_Write_Byte(unsigned char DATA )
 
 // ---------------------------------------------------
 
+//#include "SI4432.h"		// comment out for simulation
+
+#ifndef __SI4432_H__
 //-----------------SI4432 dummy------------------
 void SI4432_Write_Byte(unsigned char ADR, unsigned char DATA ) {}
 unsigned char SI4432_Read_Byte(unsigned char ADR) {return ADR;}
@@ -32,7 +35,7 @@ void SI4432_Set_Frequency(long f) {}
 
 unsigned long seed = 123456789;
 extern float rbw;
-float myfrand()
+float myfrand(void)
 {
   seed = (unsigned int) (1103515245 * seed + 12345) ;
   return ((float) seed) / 1000000000.0;
@@ -53,7 +56,7 @@ float LEVEL(uint32_t i, uint32_t f, int v)
   return (v - dv - settingAttenuate);
 }
 
-double SI4432_RSSI(uint32_t i, int s)
+float SI4432_RSSI(uint32_t i, int s)
 {
   SI4432_Sel = s;
   double v = -100 + log10(rbw)*10 + NOISE;
@@ -63,6 +66,7 @@ double SI4432_RSSI(uint32_t i, int s)
   v = fmax(LEVEL(i,40000000,-90),v);
 }
 void SI4432_Init(void) {}
+#endif
 //--------------------- Frequency control -----------------------
 
 int dirty = true;
@@ -102,7 +106,7 @@ void SetMode(int m)
   settingMode = m;
   switch(m) {
   case M_LOW:
-  case M_GEN:
+  case M_GENLOW:
     minFreq = 0;
     maxFreq = 350000000;
     set_sweep_frequency(ST_START, (int32_t) 0);
@@ -110,6 +114,7 @@ void SetMode(int m)
 
     break;
   case M_HIGH:
+  case M_GENHIGH:
     minFreq = 260000000;
     maxFreq = 960000000;
     set_sweep_frequency(ST_START, (int32_t) 300000000);
@@ -195,7 +200,7 @@ int temppeakIndex;
 float rbw = 0;
 float vbw = 0;
 
-
+#if 0
 int inData = 0;
 unsigned long  startFreq = 250000000;
 unsigned long  stopFreq = 300000000;
@@ -210,7 +215,7 @@ double delta=0.0;
 int phase=0;
 int deltaPhase;
 int delaytime = 50;
-
+#endif
 
 
 #if 0
@@ -386,7 +391,7 @@ void DisplayPeakData(void)
 
 #endif
 
-void setupSA() 
+void setupSA(void)
 {
   SI4432_Init();
   PE4302_init();
@@ -415,7 +420,7 @@ void setFreq(int V, unsigned long freq)
 void SetRX(int m)
 {
 switch(m) {
-case M_LOW:
+case M_LOW:     // Mixed into 0
     SI4432_Sel = 0;
     SI4432_Write_Byte(0x07, 0x07);// Enable receiver chain
     SI4432_Sel = 1;
@@ -423,17 +428,24 @@ case M_LOW:
     SI4432_Write_Byte(0x6D, 0x1C + settingDrive);//Set full power
     // SI4432_SetPowerReference(settingPowerCal);
     break;
-case M_HIGH:
+case M_HIGH:    // Direct into 1
     // SI4432_SetPowerReference(-1); // Stop reference output
     SI4432_Sel = 0; // both as receiver to avoid spurs
     SI4432_Write_Byte(0x07, 0x07);// Enable receiver chain
     SI4432_Sel = 1;
     SI4432_Write_Byte(0x07, 0x07);// Enable receiver chain
     break;
-case M_GEN:
+case M_GENLOW:  // Mixed output from 0
     SI4432_Sel = 0;
     SI4432_Write_Byte(0x7, 0x0B); // start TX
     SI4432_Write_Byte(0x6D, 0x1C);//Set low power
+    SI4432_Sel = 1;
+    SI4432_Write_Byte(0x7, 0x0B); // start TX
+    SI4432_Write_Byte(0x6D, 0x1C + settingDrive);//Set full power
+    break;
+case M_GENHIGH: // Direct output from 1
+    SI4432_Sel = 0;
+    SI4432_Write_Byte(0x7, 0x07); // set receive mode
     SI4432_Sel = 1;
     SI4432_Write_Byte(0x7, 0x0B); // start TX
     SI4432_Write_Byte(0x6D, 0x1C + settingDrive);//Set full power

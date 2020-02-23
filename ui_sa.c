@@ -6,7 +6,7 @@
 void set_sweep_frequency(int type, int32_t frequency);
 uint32_t get_sweep_frequency(int type);
 void clearDisplay(void);
-void ui_process_touch(void);
+//void ui_process_touch(void);
 void SetPowerGrid(int);
 void SetRefLevel(int);
 void set_refer_output(int);
@@ -505,10 +505,11 @@ static const menuitem_t menu_dfu[] = {
 };
 
 static const menuitem_t menu_mode[] = {
-  MENUITEM_FUNC("\2LOW\0RANGE", menu_mode_cb),
-  MENUITEM_FUNC("\2HIGH\0RANGE",menu_mode_cb),
-  MENUITEM_FUNC("GENERATOR",    menu_mode_cb),
-  MENUITEM_MENU("\2REF\0OUTPUT",menu_refer),
+  MENUITEM_FUNC("\2LOW\0INPUT", menu_mode_cb),
+  MENUITEM_FUNC("\2HIGH\0INPUT",menu_mode_cb),
+  MENUITEM_FUNC("\2LOW\0OUTPUT", menu_mode_cb),
+  MENUITEM_FUNC("\2HIGH\0OUTPUT",menu_mode_cb),
+  MENUITEM_MENU("\2REFERENCE\0OUTPUT",menu_refer),
   MENUITEM_BACK,
   MENUITEM_END
 };

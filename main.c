@@ -1010,7 +1010,7 @@ static void update_marker_index(void)
 static void set_frequencies(uint32_t start, uint32_t stop, int16_t points)
 {
   chMtxLock(&mutex_sweep);
-  uint32_t i;
+  int i;
   uint32_t span = stop - start;
   for (i = 0; i < points; i++) {
     uint32_t offset = (uint32_t)((i * (uint64_t)span) / (points - 1));
@@ -2360,7 +2360,7 @@ static void cmd_x(BaseSequentialStream *chp, int argc, char *argv[])
 }
 
 
-static void cmd_threads(BaseSequentialStream *chp)
+static void cmd_threads(BaseSequentialStream *chp, int argc, char *argv[])
 {
   static const char *states[] = {CH_STATE_NAMES};
   thread_t *tp;

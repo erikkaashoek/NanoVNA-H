@@ -128,7 +128,7 @@ extern float perform(int i, int32_t f, int e);
  */
 extern void ui_init(void);
 extern void ui_process(void);
-static void ui_process_touch(void);
+// static void ui_process_touch(void);
 extern void touch_cal_exec(void);
 extern void touch_draw_test(void);
 static int32_t get_marker_frequency(int);
@@ -140,7 +140,7 @@ enum {
   AV_OFF, AV_MIN, AV_MAX, AV_2, AV_4, AV_8
 };
 enum {
-  M_LOW, M_HIGH, M_GEN
+  M_LOW, M_HIGH, M_GENLOW, M_GENHIGH,
 };
 #endif
 
@@ -524,6 +524,17 @@ int16_t adc_tjun_read(ADC_TypeDef *adc);
 extern int settingAttenuate;
 extern int settingPowerCal;
 void update_rbw(uint32_t delta_f);
+
+#define byte uint8_t
+extern int SI4432_Sel;         // currently selected SI4432
+void SI4432_Write_Byte(byte ADR, byte DATA );
+byte SI4432_Read_Byte( byte ADR );
+
+void SI4432_Init(void);
+float SI4432_RSSI(uint32_t i, int s);
+void SI4432_Set_Frequency ( long Freq );
+float SI4432_SET_RBW(float WISH);
+
 #endif
 
 #endif //__NANOVNA_H__
