@@ -59,11 +59,12 @@ float LEVEL(uint32_t i, uint32_t f, int v)
 float SI4432_RSSI(uint32_t i, int s)
 {
   SI4432_Sel = s;
-  double v = -100 + log10(rbw)*10 + NOISE;
+  float v = -100 + log10(rbw)*10 + NOISE;
   v = fmax(LEVEL(i,10000000,-20),v);
   v = fmax(LEVEL(i,20000000,-40),v);
   v = fmax(LEVEL(i,30000000,-30),v);
   v = fmax(LEVEL(i,40000000,-90),v);
+  return(v);
 }
 void SI4432_Init(void) {}
 #endif
@@ -144,6 +145,7 @@ void SetClearStorage(void)
   settingShowStorage = false;
   settingSubtractStorage = false;
   trace[TRACE_STORED].enabled = false;
+  dirty = true;
 }
 
 void SetSubtractStorage(void)
@@ -493,7 +495,7 @@ float perform(int i, int32_t f, int e)
       setFreq (0, local_IF+lf);
     setFreq (1, local_IF + lf);
   }
-  double RSSI = SI4432_RSSI(lf, settingMode & 1)+settingLevelOffset+settingAttenuate;
+  float RSSI = SI4432_RSSI(lf, settingMode & 1)+settingLevelOffset+settingAttenuate;
   if (vbw > rbw) {
     int subSteps = ((int)(1.5 * vbw / rbw)) - 1;
 

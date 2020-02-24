@@ -697,7 +697,7 @@ config_t config = {
   .grid_color =        0x1084,
   .menu_normal_color = 0xffff,
   .menu_active_color = 0x7777,
-  .trace_color =       { RGBHEX(0xffe31f), RGBHEX(0x00bfe7), RGBHEX(0x1fe300)},
+  .trace_color =       { RGBHEX(0x1fe300), RGBHEX(0x00bfe7), RGBHEX(0xffe31f)},
   .touch_cal =         { 370, 540, 154, 191 },  //{ 620, 600, 160, 190 },
 #ifdef __VNA__
   .default_loadcal =   0,
@@ -735,9 +735,9 @@ properties_t current_props = {
     { 1, TRC_PHASE,  1, 0, 1.0, 4.0 }
 #endif
 #ifdef __SA__
-    { 1, TRC_LOGMAG, 0, 0, 10.0, (float) YGRIDS+1 },  //Actual
+    { 0, TRC_LOGMAG, 0, 0, 10.0, (float) YGRIDS+1 },  //Temp
     { 0, TRC_LOGMAG, 1, 0, 10.0, (float) YGRIDS+1 },  //Stored
-    { 0, TRC_LOGMAG, 2, 0, 10.0, (float) YGRIDS+1 }   //Processed
+    { 1, TRC_LOGMAG, 2, 0, 10.0, (float) YGRIDS+1 }   //Actual
 #endif
   },
   ._markers = /*[4] */ {

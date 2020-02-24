@@ -1452,10 +1452,10 @@ static void cell_draw_marker_info(int m, int n, int w, int h)
     return;
   int idx = markers[active_marker].index;
   int j = 0;
-  for (t = 0; t < TRACE_COUNT; t++) {
+  for (t = TRACE_ACTUAL; t < TRACE_COUNT; t++) {
     if (!trace[t].enabled)
       continue;
-    int xpos = 1 + (j%2)*146;
+    int xpos = 10 + (j%2)*146;
     int ypos = 1 + (j/2)*7;
     xpos -= m * CELLWIDTH -CELLOFFSETX;
     ypos -= n * CELLHEIGHT;
