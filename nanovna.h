@@ -46,9 +46,9 @@
 #endif
 #ifdef __SA__
 #define TRACE_COUNT     3
-#define TRACE_TEMP      0
-#define TRACE_ACTUAL    1
-#define TRACE_STORED    2
+#define TRACE_ACTUAL    0
+#define TRACE_STORED    1
+#define TRACE_TEMP      2
 #define stored_t  measured[TRACE_STORED]
 #define actual_t  measured[TRACE_ACTUAL]
 #define temp_t    measured[TRACE_TEMP]
