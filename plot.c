@@ -1155,7 +1155,7 @@ static void cell_draw_markers(int m, int n, int w, int h)
   for (i = 0; i < MARKER_COUNT; i++) {
     if (!markers[i].enabled)
       continue;
-    for (t = 0; t < TRACE_COUNT; t++) {
+    for (t = TRACE_ACTUAL; t < TRACE_COUNT; t++) {
       if (!trace[t].enabled)
         continue;
       uint32_t index = trace_index[t][markers[i].index];
@@ -1172,7 +1172,7 @@ static void markmap_marker(int marker)
     int t;
     if (!markers[marker].enabled)
         return;
-    for (t = 0; t < TRACE_COUNT; t++) {
+    for (t = TRACE_ACTUAL; t < TRACE_COUNT; t++) {
         if (!trace[t].enabled)
             continue;
         uint32_t index = markers[marker].index;
@@ -1452,10 +1452,10 @@ static void cell_draw_marker_info(int m, int n, int w, int h)
     return;
   int idx = markers[active_marker].index;
   int j = 0;
-  for (t = 0; t < TRACE_COUNT; t++) {
+  for (t = TRACE_ACTUAL; t < TRACE_COUNT; t++) {
     if (!trace[t].enabled)
       continue;
-    int xpos = 1 + (j%2)*146;
+    int xpos = 10 + (j%2)*146;
     int ypos = 1 + (j/2)*7;
     xpos -= m * CELLWIDTH -CELLOFFSETX;
     ypos -= n * CELLHEIGHT;
@@ -1748,7 +1748,7 @@ static void cell_draw_marker_info(int m, int n, int w, int h)
     return;
   int idx = markers[active_marker].index;
   int j = 0;
-  for (t = 0; t < TRACE_COUNT; t++) {
+  for (t = TRACE_ACTUAL; t < TRACE_COUNT; t++) {
     if (!trace[t].enabled)
       continue;
     int xpos = 1 ;
