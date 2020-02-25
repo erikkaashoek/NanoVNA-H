@@ -751,7 +751,7 @@ static void trace_get_value_string(
     if (v == -INFINITY)
       chsnprintf(buf, len, "-INF dB");
     else
-      chsnprintf(buf, len, "%.2fdB %s", v, buf2);
+      chsnprintf(buf, len, "%s %.2fdB", buf2, v);
 }
 #endif
 
@@ -1455,7 +1455,7 @@ static void cell_draw_marker_info(int m, int n, int w, int h)
   for (t = TRACE_ACTUAL; t < TRACE_COUNT; t++) {
     if (!trace[t].enabled)
       continue;
-    int xpos = 10 + (j%2)*146;
+    int xpos = 30 + (j%2)*146;
     int ypos = 1 + (j/2)*7;
     xpos -= m * CELLWIDTH -CELLOFFSETX;
     ypos -= n * CELLHEIGHT;

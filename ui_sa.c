@@ -24,6 +24,117 @@ void MenuDirty(void);
 void redrawHisto(void);
 
 
+enum {
+  KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_REFPOS, KM_SCALE, KM_ATTENUATION, KM_ACTUALPOWER
+};
+
+
+#define KP_X(x) (48*(x) + 2 + (320-64-192))
+#define KP_Y(y) (48*(y) + 2)
+
+#define KP_PERIOD 10
+#define KP_MINUS 11
+#define KP_X1 12
+#define KP_K 13
+#define KP_M 14
+#define KP_G 15
+#define KP_BS 16
+#define KP_INF 17
+#define KP_DB 18
+#define KP_PLUSMINUS 19
+#define KP_KEYPAD 20
+#define KP_N 21
+#define KP_P 22
+
+typedef struct {
+  uint16_t x, y;
+  int8_t c;
+} keypads_t;
+
+static const keypads_t *keypads;
+static uint8_t keypads_last_index;
+
+
+static const keypads_t keypads_freq[] = {
+  { KP_X(1), KP_Y(3), KP_PERIOD },
+  { KP_X(0), KP_Y(3), 0 },
+  { KP_X(0), KP_Y(2), 1 },
+  { KP_X(1), KP_Y(2), 2 },
+  { KP_X(2), KP_Y(2), 3 },
+  { KP_X(0), KP_Y(1), 4 },
+  { KP_X(1), KP_Y(1), 5 },
+  { KP_X(2), KP_Y(1), 6 },
+  { KP_X(0), KP_Y(0), 7 },
+  { KP_X(1), KP_Y(0), 8 },
+  { KP_X(2), KP_Y(0), 9 },
+  { KP_X(3), KP_Y(0), KP_G },
+  { KP_X(3), KP_Y(1), KP_M },
+  { KP_X(3), KP_Y(2), KP_K },
+  { KP_X(3), KP_Y(3), KP_X1 },
+  { KP_X(2), KP_Y(3), KP_BS },
+  { 0, 0, -1 }
+};
+
+static const keypads_t keypads_scale[] = {
+  { KP_X(1), KP_Y(3), KP_PERIOD },
+  { KP_X(0), KP_Y(3), 0 },
+  { KP_X(0), KP_Y(2), 1 },
+  { KP_X(1), KP_Y(2), 2 },
+  { KP_X(2), KP_Y(2), 3 },
+  { KP_X(0), KP_Y(1), 4 },
+  { KP_X(1), KP_Y(1), 5 },
+  { KP_X(2), KP_Y(1), 6 },
+  { KP_X(0), KP_Y(0), 7 },
+  { KP_X(1), KP_Y(0), 8 },
+  { KP_X(2), KP_Y(0), 9 },
+  { KP_X(3), KP_Y(3), KP_X1 },
+  { KP_X(2), KP_Y(3), KP_BS },
+  { 0, 0, -1 }
+};
+
+static const keypads_t keypads_level[] = {
+  { KP_X(1), KP_Y(3), KP_PERIOD },
+  { KP_X(0), KP_Y(3), 0 },
+  { KP_X(0), KP_Y(2), 1 },
+  { KP_X(1), KP_Y(2), 2 },
+  { KP_X(2), KP_Y(2), 3 },
+  { KP_X(0), KP_Y(1), 4 },
+  { KP_X(1), KP_Y(1), 5 },
+  { KP_X(2), KP_Y(1), 6 },
+  { KP_X(0), KP_Y(0), 7 },
+  { KP_X(1), KP_Y(0), 8 },
+  { KP_X(2), KP_Y(0), 9 },
+  { KP_X(3), KP_Y(2), KP_MINUS },
+  { KP_X(3), KP_Y(3), KP_X1 },
+  { KP_X(2), KP_Y(3), KP_BS },
+  { 0, 0, -1 }
+};
+
+
+static const keypads_t * const keypads_mode_tbl[] = {
+  keypads_freq, // start
+  keypads_freq, // stop
+  keypads_freq, // center
+  keypads_freq, // span
+  keypads_freq, // cw freq
+  keypads_level, // refpos
+  keypads_scale, // scale
+  keypads_scale, // attenuation
+  keypads_level, // actual power
+};
+
+#ifdef __VNA__
+static const char * const keypad_mode_label[] = {
+  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "EDELAY", "VELOCITY%", "DELAY"
+};
+#endif
+#ifdef __SA__
+static const char * const keypad_mode_label[] = {
+  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "REFPOS", "SCALE", "ATTENUATION", "ACTUALPOWER"
+};
+#endif
+
+
 // ===[MENU CALLBACKS]=========================================================
 
 
@@ -564,7 +675,6 @@ show_logo(void)
 //  ili9341_drawstring_5x7("Architecture: " PORT_ARCHITECTURE_NAME " Core Variant: " PORT_CORE_VARIANT_NAME, x, y += 10, 0xffff, 0x0000);
 //  ili9341_drawstring_5x7("Port Info: " PORT_INFO, x, y += 10, 0xffff, 0x0000);
 //  ili9341_drawstring_5x7("Platform: " PLATFORM_NAME, x, y += 10, 0xffff, 0x0000);
-
 }
 
 
@@ -675,4 +785,76 @@ static void fetch_numeric_target(void)
     uistat.digit = n;
   }
   uistat.previous_value = uistat.value;
+}
+
+static int keypad_click(int key)
+{
+  int c = keypads[key].c;
+  if ((c >= KP_X1 && c <= KP_G) || c == KP_N || c == KP_P) {
+    int32_t scale = 1;
+    if (c >= KP_X1 && c <= KP_G) {
+      int n = c - KP_X1;
+      while (n-- > 0)
+        scale *= 1000;
+    } else if (c == KP_N) {
+      scale *= 1000;
+    }
+    /* numeric input done */
+    double value = my_atof(kp_buf) * (double)scale;
+    switch (keypad_mode) {
+    case KM_START:
+      set_sweep_frequency(ST_START, (int32_t)value);
+      break;
+    case KM_STOP:
+      set_sweep_frequency(ST_STOP, (int32_t)value);
+      break;
+    case KM_CENTER:
+      set_sweep_frequency(ST_CENTER, (int32_t)value);
+      break;
+    case KM_SPAN:
+      set_sweep_frequency(ST_SPAN, (int32_t)value);
+      break;
+    case KM_CW:
+      set_sweep_frequency(ST_CW, (int32_t)value);
+      break;
+    case KM_SCALE:
+      set_trace_scale(0, value);
+      set_trace_scale(1, value);
+      set_trace_scale(2, value);
+      break;
+    case KM_REFPOS:
+      set_trace_refpos(0, YGRIDS - value / get_trace_scale(0));
+      set_trace_refpos(1, YGRIDS - value / get_trace_scale(0));
+      set_trace_refpos(2, YGRIDS - value / get_trace_scale(0));
+      break;
+    case KM_ATTENUATION:
+       SetAttenuation(value);
+       break;
+    case KM_ACTUALPOWER:
+      SetPowerLevel(value);
+      break;
+    }
+    return KP_DONE;
+  } else if (c <= 9 && kp_index < NUMINPUT_LEN)
+    kp_buf[kp_index++] = '0' + c;
+  else if (c == KP_PERIOD && kp_index < NUMINPUT_LEN) {
+    // check period in former input
+    int j;
+    for (j = 0; j < kp_index && kp_buf[j] != '.'; j++)
+      ;
+    // append period if there are no period
+    if (kp_index == j)
+      kp_buf[kp_index++] = '.';
+  } else if (c == KP_MINUS) {
+    if (kp_index == 0)
+      kp_buf[kp_index++] = '-';
+  } else if (c == KP_BS) {
+    if (kp_index == 0) {
+      return KP_CANCEL;
+    }
+    --kp_index;
+  }
+  kp_buf[kp_index] = '\0';
+  draw_numeric_input(kp_buf);
+  return KP_CONTINUE;
 }

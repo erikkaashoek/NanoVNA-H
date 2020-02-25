@@ -560,6 +560,70 @@ float perform(int i, int32_t f, int e)
 #endif
 }
 
+#if 0
+void PeakSearch()
+{
+#define PEAKSTACK   4
+#define PEAKDISTANCE    10
+  int level = 0;
+  int searchLeft[PEAKSTACK];
+  int peakIndex[PEAKSTACK];
+  int peak_marker = 0;
+  searchLeft[level] = true;
+  peakIndex[level] = markers[peak_marker].index;
+  level++;
+  searchLeft[level] = true;
+  int peakFrom;
+  int peakTo;
+  while (peak_marker < 4){
+    if (searchLeft[level])
+    {
+      int fromLevel = level;
+      while (fromLevel > 0 && searchLeft[fromLevel])
+        fromLevel--
+      if(fromLevel == 0) {
+        peakFrom = PEAKDISTANCE;
+      } else {
+        peakFrom = peakIndex[fromLevel] + PEAKDISTANCE;
+      }
+      peakTo = peakIndex[level] - PEAKDISTANCE;
+    } else {
+      int toLevel = level;
+      while (toLevel > 0 && !searchLeft[toLevel])
+        toLevel--
+      if(toLevel == 0) {
+        peakTo = POINT_COUNT - 1 - PEAKDISTANCE;
+      } else {
+        peakTo = peakIndex[fromLevel] - PEAKDISTANCE;
+      }
+      peakFrom = peakIndex[level] + PEAKDISTANCE;
+    }
+    float peakMax = actual_t[peakFrom];
+    int peakIndex = peakFrom;
+    for (int i = peakFrom; i < peakTo; i++) {
+      if (peakMax < actual_t[i]) {
+        peakMax = actual_t[i];
+        peakIndex = i;
+      }
+    }
+
+
+  peakIndex = temppeakIndex;
+  peakLevel = actual_t[peakIndex];
+  peakFreq = frequencies[peakIndex];
+  settingSpur = -settingSpur;
+  int peak_marker = 0;
+  markers[peak_marker].enabled = true;
+  markers[peak_marker].index = peakIndex;
+  markers[peak_marker].frequency = frequencies[markers[peak_marker].index];
+//    redraw_marker(peak_marker, FALSE);
+
+
+}
+
+}
+#endif
+
 char *averageText[] = { "OFF", "MIN", "MAX", "2", "4", "8"};
 char *dBText[] = { "1dB/", "2dB/", "5dB/", "10dB/", "20dB/"};
 

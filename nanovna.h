@@ -132,6 +132,7 @@ extern void ui_process(void);
 extern void touch_cal_exec(void);
 extern void touch_draw_test(void);
 static int32_t get_marker_frequency(int);
+static void draw_numeric_input(const char *buf);
 static int btn_wait_release(void);
 enum { OP_NONE = 0, OP_LEVER, OP_TOUCH, OP_FREQCHANGE };
 extern uint8_t operation_requested;

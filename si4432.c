@@ -21,30 +21,30 @@
 #include "nanovna.h"
 
 
-#define CS_SI0_HIGH     palSetPad(GPIOB, 2)
-#define CS_SI1_HIGH     palSetPad(GPIOB, 10)
-#define CS_PE_HIGH      palSetPad(GPIOB, 11)
+#define CS_SI0_HIGH     palSetPad(GPIOA, 4)
+#define CS_SI1_HIGH     palSetPad(GPIOA, 5)
+#define CS_PE_HIGH      palSetPad(GPIOA, 0)
 
-#define CS_SI0_LOW     palClearPad(GPIOB, 2)
-#define CS_SI1_LOW     palClearPad(GPIOB, 10)
-#define CS_PE_LOW      palClearPad(GPIOB, 11)
+#define CS_SI0_LOW     palClearPad(GPIOA, 4)
+#define CS_SI1_LOW     palClearPad(GPIOA, 5)
+#define CS_PE_LOW      palClearPad(GPIOA, 0)
 
 // Display
 #define CS_LOW          palClearPad(GPIOB, 6)
 #define CS_HIGH         palSetPad(GPIOB, 6)
 
 
-#define SI0_PIN         2
-#define SI1_PIN         10
-#define PE_PIN          11
+//#define SI0_PIN         2
+//#define SI1_PIN         10
+//#define PE_PIN          11
 
-#define SPI2_CLK_HIGH   palSetPad(GPIOC, GPIOC_SPI2_CLK)
-#define SPI2_CLK_LOW    palClearPad(GPIOC, GPIOC_SPI2_CLK)
+#define SPI2_CLK_HIGH   palSetPad(GPIOC, GPIOB_SPI2_CLK)
+#define SPI2_CLK_LOW    palClearPad(GPIOC, GPIOB_SPI2_CLK)
 
-#define SPI2_SDI_HIGH   palSetPad(GPIOC, GPIOC_SPI2_SDI)
-#define SPI2_SDI_LOW    palClearPad(GPIOC, GPIOC_SPI2_SDI)
+#define SPI2_SDI_HIGH   palSetPad(GPIOC, GPIOB_SPI2_SDI)
+#define SPI2_SDI_LOW    palClearPad(GPIOC, GPIOB_SPI2_SDI)
 
-#define SPI2_SDO    ((palReadPort(GPIOA) & (1<<GPIOA_SPI2_SDO))?1:0)
+#define SPI2_SDO    ((palReadPort(GPIOA) & (1<<GPIOB_SPI2_SDO))?1:0)
 
 
 void shiftOut(uint8_t val)

@@ -71,11 +71,6 @@ enum {
   KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_SCALE, KM_REFPOS, KM_EDELAY, KM_VELOCITY_FACTOR, KM_SCALEDELAY
 };
 #endif
-#ifdef __SA__
-enum {
-  KM_START, KM_STOP, KM_CENTER, KM_SPAN, KM_CW, KM_REFPOS, KM_SCALE, KM_ATTENUATION, KM_ACTUALPOWER, KM_SCALEDELAY
-};
-#endif
 
 static uint8_t ui_mode = UI_NORMAL;
 static uint8_t keypad_mode;
@@ -1192,6 +1187,7 @@ static void menu_invoke(int item)
     break;
   }
 }
+#ifdef __VNA__
 
 #if !defined(ANTENNA_ANALYZER)
 #define KP_X(x) (48*(x) + 2 + (320-64-192))
@@ -1259,7 +1255,6 @@ static const keypads_t keypads_scale[] = {
   { 0, 0, -1 }
 };
 
-#ifdef __VNA__
 static const keypads_t keypads_time[] = {
   { KP_X(1), KP_Y(3), KP_PERIOD },
   { KP_X(0), KP_Y(3), 0 },
@@ -1278,27 +1273,6 @@ static const keypads_t keypads_time[] = {
   { KP_X(2), KP_Y(3), KP_BS },
   { 0, 0, -1 }
 };
-#endif
-
-#ifdef __SA__
-static const keypads_t keypads_level[] = {
-  { KP_X(1), KP_Y(3), KP_PERIOD },
-  { KP_X(0), KP_Y(3), 0 },
-  { KP_X(0), KP_Y(2), 1 },
-  { KP_X(1), KP_Y(2), 2 },
-  { KP_X(2), KP_Y(2), 3 },
-  { KP_X(0), KP_Y(1), 4 },
-  { KP_X(1), KP_Y(1), 5 },
-  { KP_X(2), KP_Y(1), 6 },
-  { KP_X(0), KP_Y(0), 7 },
-  { KP_X(1), KP_Y(0), 8 },
-  { KP_X(2), KP_Y(0), 9 },
-  { KP_X(3), KP_Y(2), KP_MINUS },
-  { KP_X(3), KP_Y(3), KP_X1 },
-  { KP_X(2), KP_Y(3), KP_BS },
-  { 0, 0, -1 }
-};
-#endif
 
 static const keypads_t * const keypads_mode_tbl[] = {
   keypads_freq, // start
@@ -1306,31 +1280,18 @@ static const keypads_t * const keypads_mode_tbl[] = {
   keypads_freq, // center
   keypads_freq, // span
   keypads_freq, // cw freq
-#ifdef __VNA__
   keypads_scale, // scale
   keypads_scale, // refpos
   keypads_time, // electrical delay
   keypads_scale, // velocity factor
   keypads_time // scale of delay
-#endif
-#ifdef __SA__
-  keypads_level, // refpos
-  keypads_scale, // scale
-  keypads_scale, // attenuation
-  keypads_level, // actual power
-#endif
 };
 
-#ifdef __VNA__
 static const char * const keypad_mode_label[] = {
   "START", "STOP", "CENTER", "SPAN", "CW FREQ", "SCALE", "REFPOS", "EDELAY", "VELOCITY%", "DELAY"
 };
 #endif
-#ifdef __SA__
-static const char * const keypad_mode_label[] = {
-  "START", "STOP", "CENTER", "SPAN", "CW FREQ", "REFPOS", "SCALE", "ATTENUATION", "ACTUALPOWER"
-};
-#endif
+
 
 static void draw_keypad(void)
 {
@@ -1800,6 +1761,7 @@ static void ui_process_menu(void)
   }
 }
 
+#ifdef __VNA__
 static int keypad_click(int key) 
 {
   int c = keypads[key].c;
@@ -1893,6 +1855,7 @@ static int keypad_click(int key)
   draw_numeric_input(kp_buf);
   return KP_CONTINUE;
 }
+#endif
 
 static int keypad_apply_touch(void)
 {
