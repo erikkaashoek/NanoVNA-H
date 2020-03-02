@@ -169,6 +169,7 @@ void SetPowerLevel(int o)
 void SetRBW(int v)
 {
   settingBandwidth = v;
+  update_rbw(frequencies[1] - frequencies[0]);
   dirty = true;
 }
 
@@ -201,6 +202,7 @@ int temppeakIndex;
 
 float rbw = 0;
 float vbw = 0;
+int vbwSteps = 1;
 
 #if 0
 int inData = 0;
@@ -464,8 +466,12 @@ void update_rbw(uint32_t delta_f)
     rbw = 1.2*vbw;
   if (rbw < 2.6)
     rbw = 2.6;
-//  old_vbw = vbw;
+  if (rbw > 600)
+    rbw = 600;
   rbw = SI4432_SET_RBW(rbw);
+  vbwSteps = ((int)(1.5 * vbw / rbw)) - 1;
+  if (vbwSteps < 1)
+    vbwSteps = 1;
   dirty = true;
 }
 
@@ -649,15 +655,35 @@ void draw_cal_status(void)
   ili9341_drawstring_5x7(buf, x, y, 0xffff, 0x0000);
 
   y += YSTEP*2;
-  ili9341_drawstring_5x7("Attn", x, y, 0xffff, 0x0000);
+  ili9341_drawstring_5x7("Attn:", x, y, 0xffff, 0x0000);
 
   y += YSTEP;
   chsnprintf(buf, BLEN, "-%ddB", settingAttenuate);
   buf[5]=0;
   ili9341_drawstring_5x7(buf, x, y, 0xffff, 0x0000);
 
+
+  if (settingAverage>0) {
+    y += YSTEP*2;
+    ili9341_drawstring_5x7("Aver:", x, y, 0xffff, 0x0000);
+
+    y += YSTEP;
+    chsnprintf(buf, BLEN, "%s",averageText[settingAverage]);
+    buf[5]=0;
+    ili9341_drawstring_5x7(buf, x, y, 0xffff, 0x0000);
+  }
+
+  if (settingSpur) {
+    y += YSTEP*2;
+    ili9341_drawstring_5x7("Spur:", x, y, 0xffff, 0x0000);
+
+    y += YSTEP;
+    chsnprintf(buf, BLEN, "ON");
+    ili9341_drawstring_5x7(buf, x, y, 0xffff, 0x0000);
+  }
+
   y += YSTEP*2;
-  ili9341_drawstring_5x7("RBW", x, y, 0xffff, 0x0000);
+  ili9341_drawstring_5x7("RBW:", x, y, 0xffff, 0x0000);
 
   y += YSTEP;
   chsnprintf(buf, BLEN, "%dkHz", (int)rbw);
@@ -665,12 +691,22 @@ void draw_cal_status(void)
   ili9341_drawstring_5x7(buf, x, y, 0xffff, 0x0000);
 
   y += YSTEP*2;
-  ili9341_drawstring_5x7("VBW", x, y, 0xffff, 0x0000);
+  ili9341_drawstring_5x7("VBW:", x, y, 0xffff, 0x0000);
 
   y += YSTEP;
   chsnprintf(buf, BLEN, "%dkHz",(int)vbw);
   buf[5]=0;
   ili9341_drawstring_5x7(buf, x, y, 0xffff, 0x0000);
+
+  y += YSTEP*2;
+  ili9341_drawstring_5x7("Scan:", x, y, 0xffff, 0x0000);
+
+  y += YSTEP;
+  chsnprintf(buf, BLEN, "%dS",(int)(0.005 * vbwSteps * sweep_points));
+  buf[5]=0;
+  ili9341_drawstring_5x7(buf, x, y, 0xffff, 0x0000);
+
+
 
   y = HEIGHT-7 + OFFSETY;
   chsnprintf(buf, BLEN, "%ddB", (int)(yMax - get_trace_scale(0) * YGRIDS));

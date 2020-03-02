@@ -157,7 +157,6 @@ static void menu_mode_cb(int item)
 extern int dirty;
 static void menu_autosettings_cb(int item)
 {
-  SetRBW(0);
   SetMode(M_LOW);
 //  set_sweep_frequency(ST_START, (int32_t) 0);
 //  set_sweep_frequency(ST_STOP, (int32_t) 300000000);
@@ -175,6 +174,7 @@ static void menu_autosettings_cb(int item)
   set_refer_output(1);
   SetAttenuation(0);
   SetPowerLevel(100); // Reset
+  SetRBW(0);
   dirty = true;
   menu_move_back();
   ui_mode_normal();
@@ -584,7 +584,8 @@ static const menuitem_t menu_stimulus[] = {
   MENUITEM_FUNC("CENTER",           menu_stimulus_cb),
   MENUITEM_FUNC("SPAN",             menu_stimulus_cb),
   MENUITEM_FUNC("CW FREQ",          menu_stimulus_cb),
-  MENUITEM_FUNC("\2PAUSE\0SWEEP",   menu_stimulus_cb),
+  MENUITEM_MENU("RBW",              menu_rbw),
+//  MENUITEM_FUNC("\2PAUSE\0SWEEP",   menu_stimulus_cb),
   MENUITEM_BACK,
   MENUITEM_END
 };

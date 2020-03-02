@@ -2562,13 +2562,13 @@ static const ShellConfig shell_cfg1 =
     .sc_channel  = (BaseSequentialStream *)&SDU1,
     .sc_commands = commands
 };
-
+#ifdef __VNA__
 static const I2CConfig i2ccfg = {
   .timingr  = 0x00300506, //voodoo magic 400kHz @ HSI 8MHz
   .cr1      = 0,
   .cr2      = 0
 };
-
+#endif
 #ifdef __DAC__
 static DACConfig dac1cfg1 = {
   //.init =         2047U,

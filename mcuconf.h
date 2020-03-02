@@ -117,7 +117,7 @@
 /*
  * I2C driver system settings.
  */
-#define STM32_I2C_USE_I2C1                  TRUE
+#define STM32_I2C_USE_I2C1                  FALSE
 #define STM32_I2C_USE_I2C2                  FALSE
 #define STM32_I2C_BUSY_TIMEOUT              50
 #define STM32_I2C_I2C1_IRQ_PRIORITY         3
@@ -136,7 +136,7 @@
  * I2S driver system settings.
  */
 #define STM32_I2S_USE_SPI1                  FALSE
-#define STM32_I2S_USE_SPI2                  TRUE
+#define STM32_I2S_USE_SPI2                  FALSE
 #define STM32_I2S_SPI1_MODE                 (STM32_I2S_MODE_MASTER |        \
                                              STM32_I2S_MODE_RX)
 #define STM32_I2S_SPI2_MODE                 (STM32_I2S_MODE_SLAVE |        \
