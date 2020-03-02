@@ -1,29 +1,7 @@
 
-int SI4432_Sel = 0;
-
-//------------PE4302 -----------------------------------------------
-
-// Comment out this define to use parallel mode PE4302
-
-#define PE4302_en 10
-
-void PE4302_init(void) {
-//  pinMode(PE4302_en, OUTPUT);
-//  digitalWrite(PE4302_en, LOW);
-}
-
-void PE4302_Write_Byte(unsigned char DATA )
-{
-  //Serial mode output
-//  digitalWrite(SI_SCLK, LOW);
-//  shiftOut(SI_SDI , SI_SCLK , MSBFIRST , DATA );
-//  digitalWrite(PE4302_en, HIGH);
-//  digitalWrite(PE4302_en, LOW);
-}
-
 // ---------------------------------------------------
 
-//#include "SI4432.h"		// comment out for simulation
+#include "SI4432.h"		// comment out for simulation
 
 #ifndef __SI4432_H__
 //-----------------SI4432 dummy------------------
@@ -32,6 +10,8 @@ unsigned char SI4432_Read_Byte(unsigned char ADR) {return ADR;}
 float SI4432_SET_RBW(float WISH) {return (WISH > 600.0?600: (WISH<3.0?3:WISH));}
 void SI4432_SetPowerReference(int p) {}
 void SI4432_Set_Frequency(long f) {}
+void PE4302_Write_Byte(unsigned char DATA ) {}
+void PE4302_init(void) {}
 
 unsigned long seed = 123456789;
 extern float rbw;
@@ -512,14 +492,14 @@ float perform(int i, int32_t f, int e)
       if (e == 0)
         setFreq (0, local_IF+lf);
       setFreq (1, local_IF + lf);
-      double subRSSI = SI4432_RSSI(lf, settingMode & 1)+settingLevelOffset+settingAttenuate;
+      float subRSSI = SI4432_RSSI(lf, settingMode & 1)+settingLevelOffset+settingAttenuate;
       if (RSSI < subRSSI)
         RSSI = subRSSI;
       subSteps--;
     }
   }
-  if (RSSI == 0) {
-    SI4432_Init();
+  if (RSSI == -120) {
+//    SI4432_Init();
   }
   return(RSSI);
 #if 0

@@ -20,23 +20,15 @@
 #include "hal.h"
 #include "nanovna.h"
 
+#include "si4432.h"
 
-#define CS_SI0_HIGH     palSetPad(GPIOA, 4)
-#define CS_SI1_HIGH     palSetPad(GPIOA, 5)
-#define CS_PE_HIGH      palSetPad(GPIOA, 0)
+#define CS_SI0_HIGH     palSetPad(GPIOA, GPIOA_RX_SEL)
+#define CS_SI1_HIGH     palSetPad(GPIOA, GPIOA_LO_SEL)
+#define CS_PE_HIGH      palSetPad(GPIOA, GPIOA_PE_SEL)
 
-#define CS_SI0_LOW     palClearPad(GPIOA, 4)
-#define CS_SI1_LOW     palClearPad(GPIOA, 5)
-#define CS_PE_LOW      palClearPad(GPIOA, 0)
-
-// Display
-#define CS_LOW          palClearPad(GPIOB, 6)
-#define CS_HIGH         palSetPad(GPIOB, 6)
-
-
-//#define SI0_PIN         2
-//#define SI1_PIN         10
-//#define PE_PIN          11
+#define CS_SI0_LOW     palClearPad(GPIOA, GPIOA_RX_SEL)
+#define CS_SI1_LOW     palClearPad(GPIOA, GPIOA_LO_SEL)
+#define CS_PE_LOW      palClearPad(GPIOA, GPIOA_PE_SEL)
 
 #define SPI2_CLK_HIGH   palSetPad(GPIOC, GPIOB_SPI2_CLK)
 #define SPI2_CLK_LOW    palClearPad(GPIOC, GPIOB_SPI2_CLK)
@@ -74,15 +66,11 @@ uint8_t shiftIn(void) {
     return value;
 }
 
-const int SI_nSEL[3] = { 2,10, 0}; // #3 is dummy!!!!!!
+const int SI_nSEL[3] = { GPIOA_RX_SEL, GPIOA_LO_SEL, 0}; // #3 is dummy!!!!!!
 
 int SI4432_Sel = 0;         // currently selected SI4432
 
-// Use protected with with
-// chMtxLock(&mutex_ili9341);
-// chMtxUnlock(&mutex_ili9341);
-
-
+#ifdef __SI4432_H__
 
 void SI4432_Write_Byte(byte ADR, byte DATA )
 {
@@ -119,40 +107,6 @@ void SI4432_Reset()
   }
 }
 
-#if 0
-float SI4432_SET_RBW(float WISH)
-{
-procedure SI4432_Set_BW_FSK ( dword in BW_Hz ) is
-  var byte IF_filset [] = {
-    1,2,3,4,5,6,7,1,2,3,
-    4,5,6,7,1,2,3,4,5,6,
-    7,1,2,3,4,5,6,7,1,2,
-    3,4,5,6,7,1,2,3,4,5,
-    6,7,4,5,9,15,1,2,3,4,
-    8,9,10,11,12,13,14 }
-
-  -- set the largest bandwidth (used if no valid value is found)
-  var byte Index = count ( IF_Bandwidth ) - 1
-
-  -- loop until a bandwidth larger or equal to the desired bandwidth is found
-  for count ( IF_Bandwidth ) using i loop
-    if IF_Bandwidth [i] >= WISH then
-      -- if found, remember the index and leave the loop
-      Index = i
-      exit loop
-    end if
-  end loop
-
-  -- get the parts from the different lookup tables
-  ndec_exp    = IF_ndec_exp    [ Index ]
-  dwn3_bypass = IF_dwn3_bypass [ Index ]
-  filset      = IF_filset      [ Index ]
-
-  -- merge the parts and write them to the bandwidth register
-  var byte Value = (dwn3_bypass << 7) | (ndec_exp << 4) | filset
-  SI4432_Write ( 0x1C, Value )
-}
-#else
 float SI4432_SET_RBW(float WISH)
 {
   byte ndec = 5 ;
@@ -470,7 +424,6 @@ float SI4432_SET_RBW(float WISH)
   return REAL ;
 }
 
-#endif
 
 void SI4432_Set_Frequency ( long Freq ) {
   int hbsel;
@@ -491,7 +444,7 @@ void SI4432_Set_Frequency ( long Freq ) {
   chThdSleepMilliseconds(2);
 }
 
-float SI4432_RSSI()
+float SI4432_RSSI(uint32_t i, int s)
 {
   int RSSI_RAW;
   // SEE DATASHEET PAGE 61
@@ -510,37 +463,6 @@ float SI4432_RSSI()
 void SI4432_Sub_Init()
 {
   SI4432_Reset();
-#if 0
-
-  SI4432_Write_Byte(0x75, 0x53);
-  SI4432_Write_Byte(0x76, 0x62);
-  SI4432_Write_Byte(0x77, 0x00);
-
-  SI4432_Write_Byte(0x6E, 0x19);
-  SI4432_Write_Byte(0x6F, 0x9A);
-  SI4432_Write_Byte(0x70, 0x04);
-  SI4432_Write_Byte(0x58, 0xC0);
-
-  SI4432_Write_Byte(0x1C, 0x81);
-  SI4432_Write_Byte(0x20, 0x78);
-  SI4432_Write_Byte(0x21, 0x01);
-  SI4432_Write_Byte(0x22, 0x11);
-  SI4432_Write_Byte(0x23, 0x11);
-  SI4432_Write_Byte(0x24, 0x01);
-  SI4432_Write_Byte(0x25, 0x13);
-  SI4432_Write_Byte(0x2C, 0x28);
-  SI4432_Write_Byte(0x2D, 0x0C);
-  SI4432_Write_Byte(0x2E, 0x28);
-  SI4432_Write_Byte(0x1F, 0x03);
-  SI4432_Write_Byte(0x69, 0x60);
-
-  // disable all interrupts
-  SI4432_Write_Byte ( 0x06, 0x00 );
-
-  // Set the sytem in Ready mode. PLL on, RX manual receive
-  SI4432_Write_Byte ( 0x07, 0x07 );
-
-#else
   // Enable receiver chain
 //  SI4432_Write_Byte(0x07, 0x05);
   // Clock Recovery Gearshift Value
@@ -579,10 +501,8 @@ void SI4432_Sub_Init()
   SI4432_Write_Byte(0x2E, 0x28) ;
 
 
-  SI4432_Write_Byte(0x69, 0x10); // No AGC, max LNA of 20dB
-  SI4432_Write_Byte(0x69, 0x60); // No AGC, max LNA of 20dB
+  SI4432_Write_Byte(0x69, 0x60); // AGC, no LNA, fast gain increment
 
-#endif
 
 // GPIO automatic antenna switching
   SI4432_Write_Byte(0x0B, 0x12) ;
@@ -608,14 +528,14 @@ void SI4432_Init()
 
   SI4432_Sel = 0;
   SI4432_Write_Byte(0x07, 0x07);// Enable receiver chain
-  SI4432_Write_Byte(0x09, V0_XTAL_CAPACITANCE);// Tune the crystal
+//  SI4432_Write_Byte(0x09, V0_XTAL_CAPACITANCE);// Tune the crystal
   SI4432_Set_Frequency(433920000);
   SI4432_Write_Byte(0x0D, 0x1F) ; // Set GPIO2 output to ground
 
 
   SI4432_Sel = 1;
   SI4432_Write_Byte(0x7, 0x0B); // start TX
-  SI4432_Write_Byte(0x09, V1_XTAL_CAPACITANCE);// Tune the crystal
+//  SI4432_Write_Byte(0x09, V1_XTAL_CAPACITANCE);// Tune the crystal
   SI4432_Set_Frequency(443920000);
   SI4432_Write_Byte(0x6D, 0x1F);//Set full power
 
@@ -634,3 +554,24 @@ void SI4432_SetPowerReference(int freq)
   }
 }
 
+//------------PE4302 -----------------------------------------------
+
+// Comment out this define to use parallel mode PE4302
+
+#define PE4302_en 10
+
+void PE4302_init(void) {
+  CS_PE_LOW;
+}
+
+extern void shiftOut(uint8_t val);
+
+void PE4302_Write_Byte(unsigned char DATA )
+{
+  SPI2_CLK_LOW;
+  shiftOut(DATA);
+  CS_PE_HIGH;
+  CS_PE_LOW;
+}
+
+#endif

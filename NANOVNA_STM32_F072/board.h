@@ -52,11 +52,12 @@
 
 /* on-board */
 
-#define GPIOA_BUTTON			0
+#define GPIOA_PE_SEL			0
 #define GPIOA_LEVER1			1
 #define GPIOA_LEVER2			2
 #define GPIOA_PUSH				3
-#define GPIOA_DAC2				5
+#define GPIOA_RX_SEL            4
+#define GPIOA_LO_SEL			5
 #define GPIOA_XP				6
 #define GPIOA_YP				7
 #define GPIOA_MCO				8
@@ -120,12 +121,12 @@
  * PA13 - SWDIO                     (alternate 0).
  * PA14 - SWCLK                     (alternate 0).
  */
-#define VAL_GPIOA_MODER             (PIN_MODE_INPUT(0U) |           \
+#define VAL_GPIOA_MODER             (PIN_MODE_OUTPUT(GPIOA_PE_SEL) | \
                                      PIN_MODE_INPUT(1U) |           \
                                      PIN_MODE_INPUT(2U) |  			\
                                      PIN_MODE_INPUT(3U) |   		\
-                                     PIN_MODE_INPUT(4U) |           \
-                                     PIN_MODE_ANALOG(GPIOA_DAC2) |  \
+                                     PIN_MODE_OUTPUT(GPIOA_RX_SEL) | \
+                                     PIN_MODE_OUTPUT(GPIOA_LO_SEL) | \
                                      PIN_MODE_ANALOG(GPIOA_XP) |    \
                                      PIN_MODE_ANALOG(GPIOA_YP) |    \
                                      PIN_MODE_ALTERNATE(GPIOA_MCO) | \
@@ -136,7 +137,7 @@
                                      PIN_MODE_ALTERNATE(GPIOA_JTMS) |    \
                                      PIN_MODE_ALTERNATE(GPIOA_JTCK) |    \
                                      PIN_MODE_OUTPUT(GPIOA_LCD_RESET))
-#define VAL_GPIOA_OTYPER            (PIN_OTYPE_PUSHPULL(0U) |       \
+#define VAL_GPIOA_OTYPER            (PIN_OTYPE_PUSHPULL(GPIOA_PE_SEL) |       \
                                      PIN_OTYPE_PUSHPULL(1U) |       \
                                      PIN_OTYPE_PUSHPULL(2U) |   \
                                      PIN_OTYPE_PUSHPULL(3U) |   \
@@ -152,12 +153,12 @@
                                      PIN_OTYPE_PUSHPULL(GPIOA_JTMS) |      \
                                      PIN_OTYPE_PUSHPULL(GPIOA_JTCK) |      \
                                      PIN_OTYPE_PUSHPULL(GPIOA_LCD_RESET))
-#define VAL_GPIOA_OSPEEDR           (PIN_OSPEED_2M(0) |          \
+#define VAL_GPIOA_OSPEEDR           (PIN_OSPEED_100M(GPIOA_PE_SEL) |          \
                                      PIN_OSPEED_2M(1) |          \
                                      PIN_OSPEED_2M(2) |       \
                                      PIN_OSPEED_2M(3) |       \
-                                     PIN_OSPEED_2M(4) |          \
-                                     PIN_OSPEED_2M(5) |           \
+                                     PIN_OSPEED_100M(4) |          \
+                                     PIN_OSPEED_100M(5) |           \
                                      PIN_OSPEED_2M(6) |          \
                                      PIN_OSPEED_2M(7) |          \
                                      PIN_OSPEED_100M(GPIOA_MCO) | \
@@ -168,12 +169,12 @@
                                      PIN_OSPEED_100M(GPIOA_JTMS) |         \
                                      PIN_OSPEED_100M(GPIOA_JTCK) |         \
                                      PIN_OSPEED_100M(GPIOA_LCD_RESET))
-#define VAL_GPIOA_PUPDR           (PIN_PUPDR_PULLDOWN(0) | \
+#define VAL_GPIOA_PUPDR           (PIN_PUPDR_PULLDOWN(GPIOA_PE_SEL) | \
                                      PIN_PUPDR_PULLDOWN(1) | \
                                      PIN_PUPDR_PULLDOWN(2) | \
                                      PIN_PUPDR_PULLDOWN(3) | \
-                                     PIN_PUPDR_PULLUP(4) |         \
-                                     PIN_PUPDR_FLOATING(5) |         \
+                                     PIN_PUPDR_PULLDOWN(4) |         \
+                                     PIN_PUPDR_PULLDOWN(5) |         \
                                      PIN_PUPDR_FLOATING(6) |         \
                                      PIN_PUPDR_FLOATING(7) |         \
                                      PIN_PUPDR_PULLUP(GPIOA_MCO) | \
@@ -184,7 +185,7 @@
                                      PIN_PUPDR_PULLDOWN(GPIOA_JTMS) |   \
                                      PIN_PUPDR_PULLDOWN(GPIOA_JTCK) |   \
                                      PIN_PUPDR_PULLDOWN(GPIOA_LCD_RESET))
-#define VAL_GPIOA_ODR             (PIN_ODR_HIGH(0) |             \
+#define VAL_GPIOA_ODR             (PIN_ODR_HIGH(GPIOA_PE_SEL) |             \
                                      PIN_ODR_HIGH(1) |             \
                                      PIN_ODR_HIGH(2) |         \
                                      PIN_ODR_HIGH(3) |         \
@@ -200,7 +201,7 @@
                                      PIN_ODR_HIGH(GPIOA_JTMS) |     \
                                      PIN_ODR_HIGH(GPIOA_JTCK) |     \
                                      PIN_ODR_HIGH(GPIOA_LCD_RESET))
-#define VAL_GPIOA_AFRL              (PIN_AFIO_AF(0, 0) |           \
+#define VAL_GPIOA_AFRL              (PIN_AFIO_AF(GPIOA_PE_SEL, 0) |           \
                                      PIN_AFIO_AF(1, 0) |           \
                                      PIN_AFIO_AF(2, 0) |       \
                                      PIN_AFIO_AF(3, 0) |       \
@@ -243,10 +244,10 @@
                                      PIN_MODE_ALTERNATE(GPIOB_I2C1_SDA) | \
                                      PIN_MODE_OUTPUT(10) |          \
                                      PIN_MODE_OUTPUT(11) |          \
-                                     PIN_MODE_ALTERNATE(GPIOB_SPI2_CLK) | \
-                                     PIN_MODE_ALTERNATE(GPIOB_SPI2_SDO) | \
+                                     PIN_MODE_OUTPUT(GPIOB_SPI2_CLK) | \
+                                     PIN_MODE_INPUT(GPIOB_SPI2_SDO) | \
                                      PIN_MODE_ALTERNATE(14) | \
-                                     PIN_MODE_ALTERNATE(GPIOB_SPI2_SDI))
+                                     PIN_MODE_OUTPUT(GPIOB_SPI2_SDI))
 #define VAL_GPIOB_OTYPER            (PIN_OTYPE_PUSHPULL(0) |       \
                                      PIN_OTYPE_PUSHPULL(1) |       \
                                      PIN_OTYPE_PUSHPULL(2) |       \

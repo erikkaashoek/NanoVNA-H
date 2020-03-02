@@ -6,7 +6,7 @@
 # Compiler options here.
 ifeq ($(USE_OPT),)
 #  USE_OPT = -std=gnu11 -O2  -ggdb -fomit-frame-pointer -falign-functions=16 --specs=nano.specs -fstack-usage
-  USE_OPT = -std=gnu11 -ggdb -fomit-frame-pointer -falign-functions=16 --specs=nano.specs -fstack-usage
+  USE_OPT = -std=gnu11 -O -ggdb -fomit-frame-pointer -falign-functions=16 --specs=nano.specs -fstack-usage
 endif
 
 # .
@@ -148,7 +148,7 @@ CSRC = $(STARTUPSRC) \
        $(STREAMSSRC) \
        $(SHELLSRC) \
        usbcfg.c \
-       main.c plot.c ui.c ili9341.c numfont20x22.c Font5x7.c flash.c adc.c
+       main.c plot.c ui.c ili9341.c numfont20x22.c Font5x7.c flash.c adc.c  si4432.c
 endif
 
 #       $(TESTSRC) \
