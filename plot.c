@@ -1571,21 +1571,22 @@ static void cell_draw_marker_info(int m, int n, int w, int h)
   for (int i = 0; i < MARKER_COUNT; i++) {
     if (!markers[i].enabled)
       continue;
-  int idx = markers[i].index;
-  for (t = TRACE_ACTUAL; t <= TRACE_ACTUAL; t++) { // Only show info on actual trace
-    if (!trace[t].enabled)
-      continue;
-    int xpos = 25 + (j%2)*146;
-    int ypos = 1 + (j/2)*7;
-    xpos -= m * CELLWIDTH -CELLOFFSETX;
-    ypos -= n * CELLHEIGHT;
-    chsnprintf(buf, sizeof buf, " %d:", i+1);
-    cell_drawstring_invert_5x7(w, h, buf, xpos, ypos, config.trace_color[t],  i == active_marker);
-    trace_get_value_string(
-        t, buf, sizeof buf,
-        idx, measured[trace[t].channel], frequencies, sweep_points);
-    cell_drawstring_5x7(w, h, buf, xpos+20, ypos, config.trace_color[t]);
-    j++;
+    int idx = markers[i].index;
+    for (t = TRACE_ACTUAL; t <= TRACE_ACTUAL; t++) { // Only show info on actual trace
+      if (!trace[t].enabled)
+        continue;
+      int xpos = 25 + (j%2)*146;
+      int ypos = 1 + (j/2)*7;
+      xpos -= m * CELLWIDTH -CELLOFFSETX;
+      ypos -= n * CELLHEIGHT;
+      chsnprintf(buf, sizeof buf, " %d:", i+1);
+      cell_drawstring_invert_5x7(w, h, buf, xpos, ypos, config.trace_color[t],  i == active_marker);
+      trace_get_value_string(
+          t, buf, sizeof buf,
+          idx, measured[trace[t].channel], frequencies, sweep_points);
+      cell_drawstring_5x7(w, h, buf, xpos+20, ypos, config.trace_color[t]);
+      j++;
+    }
   }
 }
 #endif

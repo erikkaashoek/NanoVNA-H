@@ -1792,33 +1792,12 @@ static int keypad_click(int key)
     case KM_CW:
       set_sweep_frequency(ST_CW, (int32_t)value);
       break;
-#ifdef __VNA__
     case KM_SCALE:
       set_trace_scale(uistat.current_trace, value);
       break;
     case KM_REFPOS:
       set_trace_refpos(uistat.current_trace, value);
       break;
-#endif
-#ifdef __SA__
-    case KM_SCALE:
-      set_trace_scale(0, value);
-      set_trace_scale(1, value);
-      set_trace_scale(2, value);
-      break;
-    case KM_REFPOS:
-      set_trace_refpos(0, YGRIDS - value / get_trace_scale(0));
-      set_trace_refpos(1, YGRIDS - value / get_trace_scale(0));
-      set_trace_refpos(2, YGRIDS - value / get_trace_scale(0));
-      break;
-    case KM_ATTENUATION:
-       SetAttenuation(value);
-       break;
-    case KM_ACTUALPOWER:
-      SetPowerLevel(value);
-      break;
-#endif
-#ifdef __VNA__
     case KM_EDELAY:
       set_electrical_delay(value); // pico seconds
       break;
@@ -1828,7 +1807,6 @@ static int keypad_click(int key)
     case KM_SCALEDELAY:
       set_trace_scale(uistat.current_trace, value * 1e-12); // pico second
       break;
-#endif
     }
 
     return KP_DONE;
