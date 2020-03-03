@@ -136,7 +136,7 @@ void SetSubtractStorage(void)
   dirty = true;
 }
 
-extern double peakLevel;
+extern float peakLevel;
 void SetPowerLevel(int o)
 {
   if (o != 100)
@@ -170,10 +170,10 @@ void SetAverage(int v)
 //------------------------------------------
 
 
-double peakLevel;
+float peakLevel;
 double peakFreq;
 int peakIndex;
-double temppeakLevel;
+float temppeakLevel;
 double temppeakFreq;
 int temppeakIndex;
 
@@ -546,6 +546,56 @@ float perform(int i, int32_t f, int e)
 #endif
 }
 
+// main loop for measurement
+static bool sweep(bool break_on_operation)
+{
+  for (int i = 0; i < sweep_points; i++) {
+    float RSSI = perform(i, frequencies[i], -1);
+    temp_t[i] = RSSI;
+    if (settingSubtractStorage) {
+      RSSI = RSSI - stored_t[i] ;
+    }
+    if (scandirty || settingAverage == AV_OFF)
+      actual_t[i] = RSSI;
+    else {
+      switch(settingAverage) {
+      case AV_MIN: if (actual_t[i] > RSSI) actual_t[i] = RSSI; break;
+      case AV_MAX: if (actual_t[i] < RSSI) actual_t[i] = RSSI; break;
+      case AV_2: actual_t[i] = (actual_t[i] + RSSI) / 2.0; break;
+      case AV_4: actual_t[i] = (actual_t[i]*3 + RSSI) / 4.0; break;
+      case AV_8: actual_t[i] = (actual_t[i]*7 + RSSI) / 8.0; break;
+      }
+    }
+    if (frequencies[i] > 1000000) {
+      if (temppeakLevel < actual_t[i]) {
+        temppeakIndex = i;
+        temppeakLevel = actual_t[i];
+      }
+    }
+    if (i == sweep_points -1) {
+      if (scandirty) {
+        scandirty = false;
+      }
+      peakIndex = temppeakIndex;
+      peakLevel = actual_t[peakIndex];
+      peakFreq = frequencies[peakIndex];
+      settingSpur = -settingSpur;
+      int peak_marker = 0;
+      markers[peak_marker].enabled = true;
+      markers[peak_marker].index = peakIndex;
+      markers[peak_marker].frequency = frequencies[markers[peak_marker].index];
+      //    redraw_marker(peak_marker, FALSE);
+
+
+    }
+    // back to toplevel to handle ui operation
+    if (operation_requested && break_on_operation)
+      return false;
+  }
+  return true;
+}
+
+
 #if 0
 void PeakSearch()
 {
@@ -692,4 +742,183 @@ void draw_cal_status(void)
   chsnprintf(buf, BLEN, "%ddB", (int)(yMax - get_trace_scale(0) * YGRIDS));
   buf[5]=0;
   ili9341_drawstring_5x7(buf, x, y, 0xffff, 0x0000);
+}
+
+
+
+enum {
+  TS_SIGNAL, TS_BELOW
+};
+
+enum {
+  TS_SILENT, TS_10MHZ,
+};
+
+#define TEST_COUNT  4
+
+static const struct {
+  int kind;
+  int setup;
+  uint32_t center;
+  int width;
+  float pass;
+  int stop_width;
+  float stop;
+} test_case [TEST_COUNT] =
+{
+ {TS_SIGNAL, TS_10MHZ, 10000000, 100000, -20, 30, -80 },
+ {TS_SIGNAL, TS_10MHZ, 20000000, 100000, -40, 30, -90 },
+ {TS_SIGNAL, TS_10MHZ, 30000000, 100000, -20, 30, -80 },
+ {TS_BELOW,  TS_SILENT, 200000000, 100000000, -70, 0, 0},
+};
+
+enum {
+  TS_WAITING, TS_PASS, TS_FAIL, TS_CRITICAL
+};
+static const  char *(test_text [4]) =
+{
+ "Waiting", "Pass", "Fail", "Critical"
+};
+static const  char *(test_fail_cause [TEST_COUNT]);
+
+static int test_status[TEST_COUNT];
+static int show_test_info = FALSE;
+
+
+static void test_acquire(int i)
+{
+  pause_sweep();
+  set_sweep_frequency(ST_CENTER, (int32_t)test_case[i].center);
+  set_sweep_frequency(ST_SPAN, (int32_t)test_case[i].width);
+
+//  set_frequencies(test_case[i].center - test_case[i].width, test_case[i].center + test_case[i].width, POINT_COUNT);
+
+//  sweep_once = TRUE;
+//  while (sweep_once)
+//    chThdSleepMilliseconds(10);
+  //  chMtxUnlock(&mutex_sweep);
+  sweep(false);
+
+//  ui_process();
+
+//  touch_start_watchdog();
+//  draw_battery_status();
+  plot_into_index(measured);
+  redraw_request |= REDRAW_CELLS | REDRAW_FREQUENCY;
+}
+
+extern void cell_drawstring_5x7(int w, int h, char *str, int x, int y, uint16_t fg);
+
+void cell_draw_test_info(int m, int n, int w, int h)
+{
+  char buf[35];
+  if (!show_test_info)
+    return;
+
+  for (int i = 0; i < TEST_COUNT; i++) {
+    int xpos = 25;
+    int ypos = 40+i*8;
+    xpos -= m * CELLWIDTH -CELLOFFSETX;
+    ypos -= n * CELLHEIGHT;
+    chsnprintf(buf, sizeof buf, "Test %d: %s%s", i+1, test_fail_cause[i], test_text[test_status[i]] );
+    uint color;
+    if (test_status[i] == TS_PASS)
+      color = RGBHEX(0x00FF00);
+    else if (test_status[i] == TS_CRITICAL)
+      color = RGBHEX(0xFFFF00);
+    else if (test_status[i] == TS_FAIL)
+      color = RGBHEX(0xFF7F7F);
+    else
+      color = RGBHEX(0x0000FF);
+
+    cell_drawstring_5x7(w, h, buf, xpos, ypos, color);
+  }
+}
+
+#define fabs(X) ((X)<0?-(X):(X))
+
+int validate_within(float v, float t, float margin)
+{
+  return(fabs(v-t) < margin);
+}
+
+int validate_below(float v, float t, float margin) {
+  return(fabs(v-t) < margin);
+}
+
+void test_validate(int i)
+{
+  if (test_case[i].kind == TS_SIGNAL) {
+    if (validate_within(peakLevel, test_case[i].pass, 5.0))
+      test_status[i] = TS_PASS;
+    else if (validate_within(peakLevel, test_case[i].pass, 10.0))
+      test_status[i] = TS_CRITICAL;
+    else
+      test_status[i] = TS_FAIL;
+    if (test_status[i] != TS_PASS)
+      test_fail_cause[i] = "Peak ";
+    if (test_status[i] == TS_PASS) {
+      for (int j = 0; j < POINT_COUNT/2 - test_case[i].stop_width; j++) {
+        if (actual_t[j] > test_case[i].stop - 5)
+          test_status[i] = TS_CRITICAL;
+        else if (actual_t[j] > test_case[i].stop) {
+          test_status[i] = TS_FAIL;
+          break;
+        }
+      }
+      for (int j = POINT_COUNT/2 + test_case[i].stop_width; j < POINT_COUNT; j++) {
+        if (actual_t[j] > test_case[i].stop - 5)
+          test_status[i] = TS_CRITICAL;
+        else if (actual_t[j] > test_case[i].stop) {
+          test_status[i] = TS_FAIL;
+          break;
+        }
+      }
+      if (test_status[i] != TS_PASS)
+        test_fail_cause[i] = "Stopband ";
+    }
+  } else if (test_case[i].kind == TS_BELOW) {
+    if (validate_within(peakLevel, test_case[i].pass, 5.0))
+      test_status[i] = TS_PASS;
+    else if (validate_within(peakLevel, test_case[i].pass, 10.0))
+      test_status[i] = TS_CRITICAL;
+    else
+      test_status[i] = TS_FAIL;
+    if (test_status[i] != TS_PASS)
+      test_fail_cause[i] = "Spur ";
+  }
+  draw_all(TRUE);
+  resume_sweep();
+}
+
+extern void menu_autosettings_cb(int item);
+extern void touch_wait_release(void);
+
+void self_test(void)
+{
+  menu_autosettings_cb(0);
+  for (int i=0; i < TEST_COUNT; i++) {
+    test_status[i] = TS_WAITING;
+    test_fail_cause[i] = "";
+  }
+  show_test_info = TRUE;
+  for (int i=0; i < TEST_COUNT; i++) {
+    switch(test_case[i].setup) {
+    case TS_SILENT:
+      set_refer_output(-1);
+      break;
+    case TS_10MHZ:
+      set_refer_output(2);
+      break;
+    }
+    test_acquire(i);
+    test_validate(i);
+    chThdSleepMilliseconds(1000);
+    if (test_status[i] != TS_PASS)
+      touch_wait_release();
+  }
+  touch_wait_release();
+//  chThdSleepMilliseconds(2000);
+  show_test_info = FALSE;
+  menu_autosettings_cb(0);
 }

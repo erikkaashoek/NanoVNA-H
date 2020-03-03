@@ -530,7 +530,7 @@ static int touch_check(void)
   }
 }
 
-static void touch_wait_release(void)
+void touch_wait_release(void)
 {
   int status;
   /* wait touch release */

@@ -22,6 +22,7 @@ void  SetSubtractStorage(void);
 void AllDirty(void);
 void MenuDirty(void);
 void redrawHisto(void);
+void self_test(void);
 
 
 enum {
@@ -155,7 +156,7 @@ static void menu_mode_cb(int item)
 }
 
 extern int dirty;
-static void menu_autosettings_cb(int item)
+void menu_autosettings_cb(int item)
 {
   SetMode(M_LOW);
 //  set_sweep_frequency(ST_START, (int32_t) 0);
@@ -181,8 +182,6 @@ static void menu_autosettings_cb(int item)
   draw_cal_status();
 }
 
-
-
 static void menu_config_cb(int item)
 {
   switch (item) {
@@ -199,6 +198,11 @@ static void menu_config_cb(int item)
       draw_menu();
       break;
   case 2:
+      menu_move_back();
+      ui_mode_normal();
+      self_test();
+      break;
+  case 3:
       show_version();
       redraw_frame();
       request_to_redraw_grid();
@@ -630,6 +634,7 @@ static const menuitem_t menu_mode[] = {
 static const menuitem_t menu_config[] = {
   MENUITEM_FUNC("TOUCH CAL",    menu_config_cb),
   MENUITEM_FUNC("TOUCH TEST",   menu_config_cb),
+  MENUITEM_FUNC("SELF TEST",    menu_config_cb),
   MENUITEM_FUNC("VERSION",      menu_config_cb),
   MENUITEM_FUNC("\2ACTUAL\0POWER",menu_actualpower_cb),
 //  MENUITEM_MENU("RBW", menu_rbw),

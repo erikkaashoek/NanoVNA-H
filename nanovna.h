@@ -201,6 +201,8 @@ extern void tlv320aic3204_select(int channel);
 #define WIDTH 290
 #define HEIGHT 232
 #define CELLOFFSETY 0
+#define CELLWIDTH 32
+#define CELLHEIGHT 32
 #endif
 
 #define CELLOFFSETX 0

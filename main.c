@@ -767,14 +767,12 @@ static void ensure_edit_config(void)
 
 #include "sa_core.c"
 
+#ifdef __VNA__
 // main loop for measurement
 static bool sweep(bool break_on_operation)
 {
-#ifdef __VNA__
   pll_lock_failed = false;
-#endif
   for (int i = 0; i < sweep_points; i++) {
-#ifdef __VNA__
         int delay = set_frequency(frequencies[i]);
         delay = delay < 3 ? 3 : delay;
         delay = delay > 8 ? 8 : delay;
@@ -796,58 +794,14 @@ static bool sweep(bool break_on_operation)
 
         if (electrical_delay != 0)
             apply_edelay_at(i);
-#endif
-#ifdef __SA__
-        float RSSI = perform(i, frequencies[i], -1);
-        temp_t[i] = RSSI;
-        if (settingSubtractStorage) {
-          RSSI = RSSI - stored_t[i] ;
-        }
-        if (scandirty || settingAverage == AV_OFF)
-          actual_t[i] = RSSI;
-        else {
-          switch(settingAverage) {
-          case AV_MIN: if (actual_t[i] > RSSI) actual_t[i] = RSSI; break;
-          case AV_MAX: if (actual_t[i] < RSSI) actual_t[i] = RSSI; break;
-          case AV_2: actual_t[i] = (actual_t[i] + RSSI) / 2.0; break;
-          case AV_4: actual_t[i] = (actual_t[i]*3 + RSSI) / 4.0; break;
-          case AV_8: actual_t[i] = (actual_t[i]*7 + RSSI) / 8.0; break;
-          }
-        }
-        if (frequencies[i] > 1000000) {
-          if (temppeakLevel < actual_t[i]) {
-            temppeakIndex = i;
-            temppeakLevel = actual_t[i];
-          }
-        }
-        if (i == sweep_points -1) {
-          if (scandirty) {
-            scandirty = false;
-          }
-          peakIndex = temppeakIndex;
-          peakLevel = actual_t[peakIndex];
-          peakFreq = frequencies[peakIndex];
-          settingSpur = -settingSpur;
-          int peak_marker = 0;
-          markers[peak_marker].enabled = true;
-          markers[peak_marker].index = peakIndex;
-          markers[peak_marker].frequency = frequencies[markers[peak_marker].index];
-      //    redraw_marker(peak_marker, FALSE);
-
-
-        }
-
-
-#endif
         // back to toplevel to handle ui operation
         if (operation_requested && break_on_operation)
             return false;
     }
-#ifdef __VNA__
     transform_domain();
-#endif
     return true;
 }
+#endif
 
 #ifdef __SCANRAW_CMD__
 static void measure_gamma_avg(uint8_t channel, uint32_t freq, uint16_t avg_count, float* gamma) {

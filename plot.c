@@ -10,7 +10,9 @@
 
 
 #define SWAP(x,y) { int z=x; x = y; y = z; }
-
+#ifdef __SA__
+void cell_draw_test_info(int m, int n, int w, int h);
+#endif
 static void cell_draw_marker_info(int m, int n, int w, int h);
 static void frequency_string(char *buf, size_t len, int32_t freq);
 static void markmap_all_markers(void);
@@ -34,10 +36,10 @@ int area_height = HEIGHT;
 #define GRID_ADMIT       (1<<2)
 #define GRID_POLAR       (1<<3)
 
-
+#ifdef __VNA__
 #define CELLWIDTH 32
 #define CELLHEIGHT 32
-
+#endif
 /*
  * CELL_X0[27:31] cell position
  * CELL_Y0[22:26]
@@ -1336,6 +1338,7 @@ static void draw_cell(int m, int n)
   cell_draw_markers(m, n, w, h);
   // draw trace and marker info on the top
   cell_draw_marker_info(m, n, w, h);
+  cell_draw_test_info(m, n, w, h);
   PULSE;
 
   if (m == 0)
@@ -1424,7 +1427,7 @@ static void cell_drawchar_5x7(int w, int h, uint8_t ch, int x, int y, uint16_t f
   }
 }
 
-static void cell_drawstring_5x7(int w, int h, char *str, int x, int y, uint16_t fg)
+void cell_drawstring_5x7(int w, int h, char *str, int x, int y, uint16_t fg)
 {
   while (*str) {
     cell_drawchar_5x7(w, h, *str, x, y, fg, FALSE);
@@ -1586,7 +1589,7 @@ static void cell_draw_marker_info(int m, int n, int w, int h)
           idx, measured[trace[t].channel], frequencies, sweep_points);
       cell_drawstring_5x7(w, h, buf, xpos+20, ypos, config.trace_color[t]);
       j++;
-    }
+   }
   }
 }
 #endif

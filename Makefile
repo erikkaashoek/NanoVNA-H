@@ -5,8 +5,8 @@
 
 # Compiler options here.
 ifeq ($(USE_OPT),)
-#  USE_OPT = -std=gnu11 -O2  -ggdb -fomit-frame-pointer -falign-functions=16 --specs=nano.specs -fstack-usage
-  USE_OPT = -std=gnu11 -O -ggdb -fomit-frame-pointer -falign-functions=16 --specs=nano.specs -fstack-usage
+  USE_OPT = -std=gnu11 -O2  -ggdb -fomit-frame-pointer -falign-functions=16 --specs=nano.specs -fstack-usage
+#  USE_OPT = -std=gnu11 -O -ggdb -fomit-frame-pointer -falign-functions=16 --specs=nano.specs -fstack-usage
 endif
 
 # .
