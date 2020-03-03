@@ -1,6 +1,6 @@
 #ifndef __SI4432_H__
 
-//#define __SI4432_H__
+#define __SI4432_H__
 
 #define byte uint8_t
 extern int SI4432_Sel;         // currently selected SI4432

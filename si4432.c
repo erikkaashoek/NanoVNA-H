@@ -469,12 +469,11 @@ void SI4432_Sub_Init()
   SI4432_Write_Byte(0x1F, 0x00);
   // IF Filter Bandwidth
   SI4432_SET_RBW(10) ;
-  // REG 0x20 is updated with the IF Filter bandwidth
-  // Register 0x75 Frequency Band Select
-  byte sbsel = 1 ;  // recommended setting
-  byte hbsel = 0 ;  // low bands
-  byte fb = 19 ;    // 430–439.9 MHz
-  byte FBS = (sbsel << 6 ) | (hbsel << 5 ) | fb ;
+//  // Register 0x75 Frequency Band Select
+//  byte sbsel = 1 ;  // recommended setting
+//  byte hbsel = 0 ;  // low bands
+//  byte fb = 19 ;    // 430–439.9 MHz
+//  byte FBS = (sbsel << 6 ) | (hbsel << 5 ) | fb ;
 //  SI4432_Write_Byte(0x75, FBS) ;
   SI4432_Write_Byte(0x75, 0x46) ;
   // Register 0x76 Nominal Carrier Frequency
