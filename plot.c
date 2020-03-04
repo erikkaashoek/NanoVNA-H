@@ -1641,7 +1641,7 @@ void draw_frequencies(void)
         int stop = frequency1;
         strcpy(buf, "START ");
         frequency_string(buf+6, 24-6, start);
-        strcat(buf, "    ");
+        strcat(buf, "       ");
         ili9341_drawstring_5x7(buf, OFFSETX, 233, 0xffff, 0x0000);
         strcpy(buf, "STOP ");
         frequency_string(buf+5, 24-5, stop);

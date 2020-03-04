@@ -150,6 +150,7 @@ static void menu_mode_cb(int item)
     SetMode(item);
     menu_move_back();
     ui_mode_normal();
+    draw_cal_status();
     break;
   }
 
