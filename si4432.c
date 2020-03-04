@@ -30,13 +30,13 @@
 #define CS_SI1_LOW     palClearPad(GPIOA, GPIOA_LO_SEL)
 #define CS_PE_LOW      palClearPad(GPIOA, GPIOA_PE_SEL)
 
-#define SPI2_CLK_HIGH   palSetPad(GPIOC, GPIOB_SPI2_CLK)
-#define SPI2_CLK_LOW    palClearPad(GPIOC, GPIOB_SPI2_CLK)
+#define SPI2_CLK_HIGH   palSetPad(GPIOB, GPIOB_SPI2_CLK)
+#define SPI2_CLK_LOW    palClearPad(GPIOB, GPIOB_SPI2_CLK)
 
-#define SPI2_SDI_HIGH   palSetPad(GPIOC, GPIOB_SPI2_SDI)
-#define SPI2_SDI_LOW    palClearPad(GPIOC, GPIOB_SPI2_SDI)
+#define SPI2_SDI_HIGH   palSetPad(GPIOB, GPIOB_SPI2_SDI)
+#define SPI2_SDI_LOW    palClearPad(GPIOB, GPIOB_SPI2_SDI)
 
-#define SPI2_SDO    ((palReadPort(GPIOA) & (1<<GPIOB_SPI2_SDO))?1:0)
+#define SPI2_SDO    ((palReadPort(GPIOB) & (1<<GPIOB_SPI2_SDO))?1:0)
 
 
 void shiftOut(uint8_t val)
@@ -44,8 +44,6 @@ void shiftOut(uint8_t val)
      uint8_t i;
 
      for (i = 0; i < 8; i++)  {
-//       palClearPad(GPIOC, GPIOC_LED);
-//       palSetPad(GPIOC, GPIOC_LED);
            if (val & (1 << (7 - i)))
              SPI2_SDI_HIGH;
            else
@@ -75,21 +73,21 @@ int SI4432_Sel = 0;         // currently selected SI4432
 void SI4432_Write_Byte(byte ADR, byte DATA )
 {
   SPI2_CLK_LOW;
-  palClearPad(GPIOB, SI_nSEL[SI4432_Sel]);
+  palClearPad(GPIOA, SI_nSEL[SI4432_Sel]);
   ADR |= 0x80 ; // RW = 1
   shiftOut( ADR );
   shiftOut( DATA );
-  palSetPad(GPIOB, SI_nSEL[SI4432_Sel]);
+  palSetPad(GPIOA, SI_nSEL[SI4432_Sel]);
 }
 
 byte SI4432_Read_Byte( byte ADR )
 {
   byte DATA ;
   SPI2_CLK_LOW;
-  palClearPad(GPIOB, SI_nSEL[SI4432_Sel]);
+  palClearPad(GPIOA, SI_nSEL[SI4432_Sel]);
   shiftOut( ADR );
   DATA = shiftIn();
-  palSetPad(GPIOB, SI_nSEL[SI4432_Sel]);
+  palSetPad(GPIOA, SI_nSEL[SI4432_Sel]);
   return DATA ;
 }
 

@@ -171,10 +171,9 @@ void SetAverage(int v)
 
 
 float peakLevel;
-double peakFreq;
+uint32_t peakFreq;
 int peakIndex;
 float temppeakLevel;
-double temppeakFreq;
 int temppeakIndex;
 
 #define BARSTART  24
@@ -464,7 +463,6 @@ float perform(int i, int32_t f, int e)
     SetRX(settingMode);
     SI4432_SetPowerReference(settingPowerCal);
     temppeakLevel = -150;
-    temppeakFreq = -1.0;
     if (e == 0)
       setFreq (0, local_IF+f);
     else
@@ -769,7 +767,7 @@ static const struct {
  {TS_SIGNAL, TS_10MHZ, 10000000, 100000, -20, 30, -80 },
  {TS_SIGNAL, TS_10MHZ, 20000000, 100000, -40, 30, -90 },
  {TS_SIGNAL, TS_10MHZ, 30000000, 100000, -20, 30, -80 },
- {TS_BELOW,  TS_SILENT, 200000000, 100000000, -70, 0, 0},
+ {TS_BELOW,  TS_SILENT, 200000000, 100000000, -50, 0, 0},
 };
 
 enum {
@@ -783,7 +781,7 @@ static const  char *(test_fail_cause [TEST_COUNT]);
 
 static int test_status[TEST_COUNT];
 static int show_test_info = FALSE;
-
+static volatile int test_wait = false;
 
 static void test_acquire(int i)
 {
@@ -814,44 +812,52 @@ void cell_draw_test_info(int m, int n, int w, int h)
   char buf[35];
   if (!show_test_info)
     return;
-
-  for (int i = 0; i < TEST_COUNT; i++) {
+  for (int i = -1; i < TEST_COUNT; i++) {
     int xpos = 25;
     int ypos = 40+i*8;
     xpos -= m * CELLWIDTH -CELLOFFSETX;
     ypos -= n * CELLHEIGHT;
-    chsnprintf(buf, sizeof buf, "Test %d: %s%s", i+1, test_fail_cause[i], test_text[test_status[i]] );
     uint color;
-    if (test_status[i] == TS_PASS)
-      color = RGBHEX(0x00FF00);
-    else if (test_status[i] == TS_CRITICAL)
-      color = RGBHEX(0xFFFF00);
-    else if (test_status[i] == TS_FAIL)
-      color = RGBHEX(0xFF7F7F);
-    else
-      color = RGBHEX(0x0000FF);
-
+    if (i < 0) {
+      if (test_wait)
+        chsnprintf(buf, sizeof buf, "Touch screen to continue");
+      else
+        buf[0] = 0;
+      color = RGBHEX(0xFFFFFF);
+    } else {
+      chsnprintf(buf, sizeof buf, "Test %d: %s%s", i+1, test_fail_cause[i], test_text[test_status[i]] );
+      if (test_status[i] == TS_PASS)
+        color = RGBHEX(0x00FF00);
+      else if (test_status[i] == TS_CRITICAL)
+        color = RGBHEX(0xFFFF00);
+      else if (test_status[i] == TS_FAIL)
+        color = RGBHEX(0xFF7F7F);
+      else
+        color = RGBHEX(0x0000FF);
+    }
     cell_drawstring_5x7(w, h, buf, xpos, ypos, color);
   }
 }
 
 #define fabs(X) ((X)<0?-(X):(X))
 
-int validate_within(float v, float t, float margin)
+int validate_within(int i, float margin)
 {
-  return(fabs(v-t) < margin);
+  if (fabs(peakLevel-test_case[i].pass) > margin)
+    return false;
+  return(test_case[i].center - 100000 < peakFreq && peakFreq < test_case[i].center + 100000 );
 }
 
-int validate_below(float v, float t, float margin) {
-  return(fabs(v-t) < margin);
+int validate_below(int i, float margin) {
+  return(test_case[i].pass - peakLevel > margin);
 }
 
 void test_validate(int i)
 {
   if (test_case[i].kind == TS_SIGNAL) {
-    if (validate_within(peakLevel, test_case[i].pass, 5.0))
+    if (validate_within(i, 5.0))
       test_status[i] = TS_PASS;
-    else if (validate_within(peakLevel, test_case[i].pass, 10.0))
+    else if (validate_within(i, 10.0))
       test_status[i] = TS_CRITICAL;
     else
       test_status[i] = TS_FAIL;
@@ -878,15 +884,17 @@ void test_validate(int i)
         test_fail_cause[i] = "Stopband ";
     }
   } else if (test_case[i].kind == TS_BELOW) {
-    if (validate_within(peakLevel, test_case[i].pass, 5.0))
+    if (validate_below(i, 10.0))
       test_status[i] = TS_PASS;
-    else if (validate_within(peakLevel, test_case[i].pass, 10.0))
+    else if (validate_below(i, 5.0))
       test_status[i] = TS_CRITICAL;
     else
       test_status[i] = TS_FAIL;
     if (test_status[i] != TS_PASS)
       test_fail_cause[i] = "Spur ";
   }
+  if (test_status[i] != TS_PASS || i == TEST_COUNT - 1)
+    test_wait = true;
   draw_all(TRUE);
   resume_sweep();
 }
@@ -914,11 +922,12 @@ void self_test(void)
     test_acquire(i);
     test_validate(i);
     chThdSleepMilliseconds(1000);
-    if (test_status[i] != TS_PASS)
+    if (test_status[i] != TS_PASS) {
       touch_wait_release();
+    }
   }
   touch_wait_release();
-//  chThdSleepMilliseconds(2000);
+  //  chThdSleepMilliseconds(2000);
   show_test_info = FALSE;
   menu_autosettings_cb(0);
 }

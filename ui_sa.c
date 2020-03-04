@@ -452,9 +452,9 @@ static void menu_stimulus_cb(int item)
     }
     break;
   case 5: /* PAUSE */
- //   toggle_sweep();
-    //menu_move_back();
-    //ui_mode_normal();
+    toggle_sweep();
+    menu_move_back();
+    ui_mode_normal();
     draw_menu();
     break;
   }
@@ -588,8 +588,8 @@ static const menuitem_t menu_stimulus[] = {
   MENUITEM_FUNC("CENTER",           menu_stimulus_cb),
   MENUITEM_FUNC("SPAN",             menu_stimulus_cb),
   MENUITEM_FUNC("CW FREQ",          menu_stimulus_cb),
-  MENUITEM_MENU("RBW",              menu_rbw),
-//  MENUITEM_FUNC("\2PAUSE\0SWEEP",   menu_stimulus_cb),
+//  MENUITEM_MENU("RBW",              menu_rbw),
+  MENUITEM_FUNC("\2PAUSE\0SWEEP",   menu_stimulus_cb),
   MENUITEM_BACK,
   MENUITEM_END
 };
