@@ -479,7 +479,7 @@ float perform(int i, int32_t f, int e)
       setFreq (0, local_IF+lf);
     setFreq (1, local_IF + lf);
   }
-  float RSSI = SI4432_RSSI(lf, settingMode & 1)+settingLevelOffset+settingAttenuate;
+  float RSSI = SI4432_RSSI(lf, (settingMode & 1))+settingLevelOffset+settingAttenuate;
   if (vbw > rbw) {
     int subSteps = ((int)(1.5 * vbw / rbw)) - 1;
 
@@ -490,7 +490,7 @@ float perform(int i, int32_t f, int e)
       if (e == 0)
         setFreq (0, local_IF+lf);
       setFreq (1, local_IF + lf);
-      float subRSSI = SI4432_RSSI(lf, settingMode & 1)+settingLevelOffset+settingAttenuate;
+      float subRSSI = SI4432_RSSI(lf, (settingMode & 1))+settingLevelOffset+settingAttenuate;
       if (RSSI < subRSSI)
         RSSI = subRSSI;
       subSteps--;

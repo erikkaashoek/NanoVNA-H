@@ -451,6 +451,7 @@ float SI4432_RSSI(uint32_t i, int s)
     RSSI_RAW = Si446x_getRSSI();
   } else
 #endif
+    SI4432_Sel = s;
     RSSI_RAW = (unsigned char)SI4432_Read_Byte( 0x26 ) ;
   float dBm = 0.5 * RSSI_RAW - 120.0 ;
   // Serial.println(dBm,2);
